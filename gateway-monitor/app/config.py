@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     snmp_line_6_oid: str | None = Field(default=None, alias="SNMP_LINE_6_OID")
     snmp_line_7_oid: str | None = Field(default=None, alias="SNMP_LINE_7_OID")
     snmp_line_8_oid: str | None = Field(default=None, alias="SNMP_LINE_8_OID")
+    snmp_busy_lines_oids: str | None = Field(
+        default=None,
+        alias="SNMP_BUSY_LINES_OIDS",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -132,6 +136,16 @@ class Settings(BaseSettings):
                 if 1 <= line_number <= 8:
                     line_numbers.append(line_number)
         return line_numbers or [1, 2, 3, 4]
+
+    @property
+    def busy_lines_oids(self) -> list[str]:
+        if not self.snmp_busy_lines_oids:
+            return []
+        return [
+            oid.strip()
+            for oid in self.snmp_busy_lines_oids.split(",")
+            if oid.strip()
+        ]
 
 
 @lru_cache

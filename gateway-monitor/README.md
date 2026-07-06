@@ -219,6 +219,20 @@ SNMP_LINE_8_OID=.1.3.6.1.4.1.39871.1.2.1.1.9.8
 O campo usado e `chUsingNum` da tabela `pstnStatusTable`. Valor `0` indica
 linha livre; valor maior que `0` indica linha ocupada.
 
+Alguns firmwares Synway nao expõem a tabela PSTN por linha. Nesse caso, use o
+modo agregado, somando os contadores de chamadas em andamento:
+
+```env
+SNMP_LINE_1_OID=
+SNMP_LINE_2_OID=
+SNMP_LINE_3_OID=
+SNMP_LINE_4_OID=
+SNMP_BUSY_LINES_OIDS=.1.3.6.1.4.1.39871.1.3.1.1.7.0,.1.3.6.1.4.1.39871.1.3.1.1.8.0
+```
+
+Esses OIDs representam `chIP2PSTNNum` e `chPSTN2IPNum`. O sistema soma os
+valores e marca as primeiras N linhas monitoradas como ocupadas.
+
 O alerta de congestionamento considera somente as linhas em
 `GATEWAY_MONITORED_LINES`. Nesta instalacao, as linhas 5 a 8 estao desativadas.
 

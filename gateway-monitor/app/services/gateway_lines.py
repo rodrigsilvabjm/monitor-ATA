@@ -58,6 +58,13 @@ class GatewayLineMonitor:
             return self._snapshot
 
         monitored_lines = self._settings.monitored_line_numbers
+        if self._settings.busy_lines_oids:
+            self._snapshot = await self._read_aggregate_busy_lines(monitored_lines)
+            if self._event_recorder:
+                self._event_recorder.process_snapshot(self._snapshot)
+            await self._broadcast(self._snapshot)
+            return self._snapshot
+
         line_oids = self._settings.snmp_line_oids
         if any(line_number not in line_oids for line_number in monitored_lines):
             self._snapshot = self._build_configuration_snapshot(line_oids)
@@ -100,6 +107,37 @@ class GatewayLineMonitor:
             status=status,
             raw_value=result.value,
             message=result.error,
+        )
+
+    async def _read_aggregate_busy_lines(
+        self,
+        monitored_lines: list[int],
+    ) -> GatewayLinesSnapshot:
+        results = await asyncio.gather(
+            *[
+                self._snmp_client.get_value(oid)
+                for oid in self._settings.busy_lines_oids
+            ]
+        )
+        errors = [result.error for result in results if result.error]
+        busy_count = sum(parse_busy_count(result.value) for result in results)
+        busy_count = max(0, min(busy_count, len(monitored_lines)))
+
+        lines = [
+            GatewayLineState(
+                line=line_number,
+                label=f"Linha {line_number}",
+                status="busy" if index < busy_count else "idle",
+                raw_value=str(busy_count),
+                message="; ".join(errors) if errors else None,
+            )
+            for index, line_number in enumerate(monitored_lines)
+        ]
+        return GatewayLinesSnapshot(
+            gateway_host=self._settings.snmp_host,
+            connected=not errors,
+            updated_at=datetime.now(UTC),
+            lines=lines,
         )
 
     async def _broadcast(self, snapshot: GatewayLinesSnapshot) -> None:
@@ -194,3 +232,14 @@ def normalize_line_status(raw_value: str | None) -> str:
     if normalized.isdigit():
         return "busy" if int(normalized) > 0 else "idle"
     return "unknown"
+
+
+def parse_busy_count(raw_value: str | None) -> int:
+    if raw_value is None:
+        return 0
+    normalized = raw_value.strip()
+    if normalized.startswith("-"):
+        return 0
+    if normalized.isdigit():
+        return int(normalized)
+    return 0

@@ -4,7 +4,7 @@ from pysnmp.hlapi import v1arch
 from app.config import get_settings
 from app.main import app
 from app.services.snmp_client import PySnmpClient
-from app.services.gateway_lines import normalize_line_status
+from app.services.gateway_lines import normalize_line_status, parse_busy_count
 
 
 def test_normalize_line_status() -> None:
@@ -13,6 +13,13 @@ def test_normalize_line_status() -> None:
     assert normalize_line_status("2") == "ringing"
     assert normalize_line_status("offline") == "unavailable"
     assert normalize_line_status(None) == "unknown"
+
+
+def test_parse_busy_count() -> None:
+    assert parse_busy_count("3") == 3
+    assert parse_busy_count("0") == 0
+    assert parse_busy_count("-1") == 0
+    assert parse_busy_count(None) == 0
 
 
 def test_api_lines_returns_eight_lines() -> None:
