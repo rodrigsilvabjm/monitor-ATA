@@ -109,7 +109,12 @@ ensure_python() {
 }
 
 apt_candidate_exists() {
-  CANDIDATE="$(apt-cache policy "$1" | awk '/Candidate:/ {print $2; exit}')"
+  CANDIDATE="$(
+    apt-cache policy "$1" | awk -v package_name="$1" '
+      $0 == package_name ":" { found = 1; next }
+      found && /Candidate:/ { print $2; exit }
+    '
+  )"
   [ -n "$CANDIDATE" ] && [ "$CANDIDATE" != "(none)" ]
 }
 
