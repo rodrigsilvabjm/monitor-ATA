@@ -44,3 +44,10 @@ Se o APT tambem nao entregar `python3.11`, use o instalador que compila Python:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-focal-build.sh | bash
 ```
+
+Se a instalacao ja criou `.venv` e banco, mas o servico systemd ainda nao
+existe, repare com:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-service.sh | bash
+```

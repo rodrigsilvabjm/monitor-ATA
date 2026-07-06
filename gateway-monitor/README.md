@@ -94,6 +94,13 @@ Se o APT tambem nao entregar `python3.11`, use:
 curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-focal-build.sh | bash
 ```
 
+Se a instalacao ja chegou a criar `.venv` e rodar migrations, mas o servico
+systemd nao existe, use:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-service.sh | bash
+```
+
 ## Instalacao local
 
 ```bash
