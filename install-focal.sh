@@ -7,6 +7,8 @@ APP_SUBDIR="${APP_SUBDIR:-gateway-monitor}"
 SERVICE_NAME="${SERVICE_NAME:-gateway-monitor}"
 SERVICE_USER="${SERVICE_USER:-gateway-monitor}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.11}"
+PYTHON_PATCH_VERSION="${PYTHON_PATCH_VERSION:-3.11.9}"
+PYTHON_PREFIX="${PYTHON_PREFIX:-/opt/python-$PYTHON_VERSION}"
 
 info() {
   printf '\033[1;34m[Gateway Monitor]\033[0m %s\n' "$1"
@@ -42,11 +44,24 @@ install_packages() {
     curl \
     git \
     gnupg \
+    libbz2-dev \
+    libffi-dev \
+    liblzma-dev \
     libpq-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    libxml2-dev \
+    libxmlsec1-dev \
     openssl \
     postgresql \
     postgresql-contrib \
-    software-properties-common
+    software-properties-common \
+    tk-dev \
+    uuid-dev \
+    wget \
+    xz-utils \
+    zlib1g-dev
 }
 
 configure_deadsnakes() {
@@ -61,15 +76,43 @@ install_python() {
     return
   fi
 
+  if [ -x "$PYTHON_PREFIX/bin/python$PYTHON_VERSION" ]; then
+    PYTHON_BIN="$PYTHON_PREFIX/bin/python$PYTHON_VERSION"
+    return
+  fi
+
   configure_deadsnakes
 
   info "Instalando Python $PYTHON_VERSION..."
-  as_root apt-get install -y \
+  if as_root apt-get install -y \
     "python$PYTHON_VERSION" \
     "python$PYTHON_VERSION-dev" \
-    "python$PYTHON_VERSION-venv"
+    "python$PYTHON_VERSION-venv"; then
+    PYTHON_BIN="python$PYTHON_VERSION"
+    return
+  fi
 
-  PYTHON_BIN="python$PYTHON_VERSION"
+  warn "Python $PYTHON_VERSION nao esta disponivel no APT. Compilando Python $PYTHON_PATCH_VERSION..."
+  build_python_from_source
+  PYTHON_BIN="$PYTHON_PREFIX/bin/python$PYTHON_VERSION"
+}
+
+build_python_from_source() {
+  BUILD_DIR="/tmp/Python-$PYTHON_PATCH_VERSION"
+  TARBALL="/tmp/Python-$PYTHON_PATCH_VERSION.tgz"
+
+  if [ ! -x "$PYTHON_PREFIX/bin/python$PYTHON_VERSION" ]; then
+    curl -fsSL "https://www.python.org/ftp/python/$PYTHON_PATCH_VERSION/Python-$PYTHON_PATCH_VERSION.tgz" -o "$TARBALL"
+    rm -rf "$BUILD_DIR"
+    tar -xzf "$TARBALL" -C /tmp
+
+    cd "$BUILD_DIR"
+    ./configure --prefix="$PYTHON_PREFIX" --with-ensurepip=install
+    make -j"$(nproc)"
+    as_root make altinstall
+  fi
+
+  "$PYTHON_PREFIX/bin/python$PYTHON_VERSION" -m ensurepip --upgrade
 }
 
 prepare_repository() {
