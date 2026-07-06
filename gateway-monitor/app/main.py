@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     logger.info("Starting %s %s", settings.app_name, settings.app_version)
-    gateway_line_monitor.start()
     asterisk_ami_monitor.start()
+    gateway_line_monitor.start()
     event_backup_service.start()
     try:
         yield

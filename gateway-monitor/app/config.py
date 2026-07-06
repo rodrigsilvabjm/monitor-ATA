@@ -79,6 +79,10 @@ class Settings(BaseSettings):
         default="1,2,3,4,5,6,7,8",
         alias="GATEWAY_MONITORED_LINES",
     )
+    gateway_line_status_source: str = Field(
+        default="snmp",
+        alias="GATEWAY_LINE_STATUS_SOURCE",
+    )
 
     snmp_line_1_oid: str | None = Field(default=None, alias="SNMP_LINE_1_OID")
     snmp_line_2_oid: str | None = Field(default=None, alias="SNMP_LINE_2_OID")
@@ -147,6 +151,10 @@ class Settings(BaseSettings):
             for oid in self.snmp_busy_lines_oids.split(",")
             if oid.strip()
         ]
+
+    @property
+    def use_asterisk_line_status(self) -> bool:
+        return self.gateway_line_status_source.strip().lower() == "asterisk"
 
 
 @lru_cache

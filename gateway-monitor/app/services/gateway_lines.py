@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 from app.config import Settings
@@ -16,10 +17,12 @@ class GatewayLineMonitor:
         settings: Settings,
         snmp_client: SnmpClient | None = None,
         event_recorder: GatewayEventRecorder | None = None,
+        active_call_count_provider: Callable[[], tuple[int, bool]] | None = None,
     ) -> None:
         self._settings = settings
         self._snmp_client = snmp_client or PySnmpClient(settings)
         self._event_recorder = event_recorder
+        self._active_call_count_provider = active_call_count_provider
         self._snapshot = self._build_initial_snapshot()
         self._subscribers: set[asyncio.Queue[GatewayLinesSnapshot]] = set()
         self._task: asyncio.Task[None] | None = None
@@ -58,6 +61,23 @@ class GatewayLineMonitor:
             return self._snapshot
 
         monitored_lines = self._settings.monitored_line_numbers
+        if (
+            self._settings.use_asterisk_line_status
+            and self._active_call_count_provider
+        ):
+            active_calls, connected = self._active_call_count_provider()
+            self._snapshot = self._build_busy_count_snapshot(
+                monitored_lines=monitored_lines,
+                busy_count=active_calls,
+                connected=connected,
+                raw_value=str(active_calls),
+                message="Fonte: Asterisk AMI",
+            )
+            if self._event_recorder:
+                self._event_recorder.process_snapshot(self._snapshot)
+            await self._broadcast(self._snapshot)
+            return self._snapshot
+
         if self._settings.busy_lines_oids:
             self._snapshot = await self._read_aggregate_busy_lines(monitored_lines)
             if self._event_recorder:
@@ -121,23 +141,37 @@ class GatewayLineMonitor:
         )
         errors = [result.error for result in results if result.error]
         busy_count = sum(parse_busy_count(result.value) for result in results)
-        busy_count = max(0, min(busy_count, len(monitored_lines)))
+        return self._build_busy_count_snapshot(
+            monitored_lines=monitored_lines,
+            busy_count=busy_count,
+            connected=not errors,
+            raw_value=str(busy_count),
+            message="; ".join(errors) if errors else None,
+        )
 
-        lines = [
-            GatewayLineState(
-                line=line_number,
-                label=f"Linha {line_number}",
-                status="busy" if index < busy_count else "idle",
-                raw_value=str(busy_count),
-                message="; ".join(errors) if errors else None,
-            )
-            for index, line_number in enumerate(monitored_lines)
-        ]
+    def _build_busy_count_snapshot(
+        self,
+        monitored_lines: list[int],
+        busy_count: int,
+        connected: bool,
+        raw_value: str,
+        message: str | None,
+    ) -> GatewayLinesSnapshot:
+        safe_busy_count = max(0, min(busy_count, len(monitored_lines)))
         return GatewayLinesSnapshot(
             gateway_host=self._settings.snmp_host,
-            connected=not errors,
+            connected=connected,
             updated_at=datetime.now(UTC),
-            lines=lines,
+            lines=[
+                GatewayLineState(
+                    line=line_number,
+                    label=f"Linha {line_number}",
+                    status="busy" if index < safe_busy_count else "idle",
+                    raw_value=raw_value,
+                    message=message,
+                )
+                for index, line_number in enumerate(monitored_lines)
+            ],
         )
 
     async def _broadcast(self, snapshot: GatewayLinesSnapshot) -> None:

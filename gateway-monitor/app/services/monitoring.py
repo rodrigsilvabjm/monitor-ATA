@@ -8,6 +8,7 @@ from app.services.telegram_notifier import TelegramNotifier
 
 settings = get_settings()
 telegram_notifier = TelegramNotifier(settings)
+asterisk_ami_monitor = AsteriskAmiMonitor(settings)
 gateway_event_recorder = GatewayEventRecorder(
     SessionLocal,
     telegram_notifier=telegram_notifier,
@@ -15,6 +16,9 @@ gateway_event_recorder = GatewayEventRecorder(
 gateway_line_monitor = GatewayLineMonitor(
     settings,
     event_recorder=gateway_event_recorder,
+    active_call_count_provider=lambda: (
+        asterisk_ami_monitor.snapshot.simultaneous_calls,
+        asterisk_ami_monitor.snapshot.connected,
+    ),
 )
-asterisk_ami_monitor = AsteriskAmiMonitor(settings)
 event_backup_service = EventBackupService(settings, SessionLocal)

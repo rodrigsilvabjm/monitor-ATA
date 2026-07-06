@@ -206,6 +206,7 @@ SNMP_POLL_INTERVAL=1
 SNMP_MIB_DIR=app/mibs
 SNMP_MIB_NAME=SYNWAY-GW-MIB
 GATEWAY_MONITORED_LINES=1,2,3,4
+GATEWAY_LINE_STATUS_SOURCE=snmp
 SNMP_LINE_1_OID=.1.3.6.1.4.1.39871.1.2.1.1.9.1
 SNMP_LINE_2_OID=.1.3.6.1.4.1.39871.1.2.1.1.9.2
 SNMP_LINE_3_OID=.1.3.6.1.4.1.39871.1.2.1.1.9.3
@@ -215,6 +216,17 @@ SNMP_LINE_6_OID=.1.3.6.1.4.1.39871.1.2.1.1.9.6
 SNMP_LINE_7_OID=.1.3.6.1.4.1.39871.1.2.1.1.9.7
 SNMP_LINE_8_OID=.1.3.6.1.4.1.39871.1.2.1.1.9.8
 ```
+
+Quando o SNMP do firmware nao expõe estado ao vivo das FXO, mas o Asterisk AMI
+esta conectado, use:
+
+```env
+GATEWAY_LINE_STATUS_SOURCE=asterisk
+```
+
+Nesse modo, a ocupacao das linhas vem do contador de chamadas simultaneas do
+Asterisk AMI. O SNMP continua podendo ser usado para validar disponibilidade do
+gateway.
 
 O campo usado e `chUsingNum` da tabela `pstnStatusTable`. Valor `0` indica
 linha livre; valor maior que `0` indica linha ocupada.
