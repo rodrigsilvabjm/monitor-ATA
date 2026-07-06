@@ -35,6 +35,7 @@ detect_os() {
   # shellcheck disable=SC1091
   . /etc/os-release
   OS_ID="${ID:-}"
+  OS_CODENAME="${VERSION_CODENAME:-}"
 }
 
 install_base_packages() {
@@ -60,7 +61,35 @@ install_docker() {
 
   install_base_packages
   info "Instalando Docker..."
-  curl -fsSL https://get.docker.com | as_root sh
+
+  case "$OS_ID" in
+    ubuntu|debian)
+      if [ -z "$OS_CODENAME" ] && has_command lsb_release; then
+        OS_CODENAME="$(lsb_release -cs)"
+      fi
+
+      [ -n "$OS_CODENAME" ] || fail "Nao foi possivel detectar a versao do Ubuntu/Debian."
+
+      ARCH="$(dpkg --print-architecture)"
+      as_root install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL "https://download.docker.com/linux/$OS_ID/gpg" | as_root tee /etc/apt/keyrings/docker.asc >/dev/null
+      as_root chmod a+r /etc/apt/keyrings/docker.asc
+
+      printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/%s %s stable\n' \
+        "$ARCH" "$OS_ID" "$OS_CODENAME" | as_root tee /etc/apt/sources.list.d/docker.list >/dev/null
+
+      as_root apt-get update
+      if ! as_root apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-buildx-plugin; then
+        warn "docker-buildx-plugin indisponivel. Tentando instalar Docker sem Buildx..."
+        as_root apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+      fi
+      ;;
+    *)
+      fail "Instalacao automatica do Docker suportada para Ubuntu/Debian."
+      ;;
+  esac
+
+  docker_compose version >/dev/null 2>&1 || fail "Docker Compose nao ficou disponivel apos a instalacao."
 }
 
 docker_compose() {
