@@ -1,0 +1,819 @@
+SYNWAY-GW-MIB DEFINITIONS::=BEGIN 
+--
+-- Top-level infrastructure of the SNMP project enterprise MIB tree
+--
+IMPORTS
+		enterprises,OBJECT-TYPE,Integer32 FROM SNMPv2-SMI 
+  	OBJECT-GROUP, NOTIFICATION-GROUP	FROM SNMPv2-CONF 
+ 		DisplayString 										FROM SNMPv2-TC; 
+            
+synway MODULE-IDENTITY
+    LAST-UPDATED "201507210000Z"
+    ORGANIZATION "www.synwayd.com"
+    CONTACT-INFO    
+								 "postal:Wes Martin P.O. Box 382 Shawn CA  95617
+							    email:shawn@sanhuid.com"
+    DESCRIPTION
+								"Top-level infrastructure of the Net-SNMP project enterprise MIB tree"
+    REVISION    "201507210000Z"
+    DESCRIPTION	"First draft"
+    ::= { enterprises 39871}
+
+-----------------------------------------------------------
+--  Node definitions
+-- 
+-- Top-level structure of the MIB
+-- 
+		-- 1.3.6.1.4.1.39871.1
+		tgStatus OBJECT IDENTIFIER ::= { synway 1 }
+
+		-- 1.3.6.1.4.1.39871.2
+		tgNetwork OBJECT IDENTIFIER ::= { synway 2 }
+
+		-- 1.3.6.1.4.1.39871.3
+		tgMgmt OBJECT IDENTIFIER ::= { synway 3 }
+
+		-- 1.3.6.1.4.1.39871.4
+		tgNotification OBJECT IDENTIFIER ::= { synway 4 }
+
+		-- 1.3.6.1.4.1.39871.5
+		ftpTransferSchedule OBJECT IDENTIFIER ::= { synway 5 }
+
+-----------------------------------------------------------
+
+-----------------------------------------------------------
+-- Status 
+-- 
+
+-- 
+--   system Information
+-- 
+		-- 1.3.6.1.4.1.39871.1.1 
+		sysInfomation OBJECT IDENTIFIER ::= {tgStatus 1 }
+		
+		-- 1.3.6.1.4.1.39871.1.1.1
+		deviceType OBJECT-TYPE
+			SYNTAX DisplayString
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"This device Type."
+			::= {sysInfomation 1 }
+			
+		-- 1.3.6.1.4.1.39871.1.1.2
+		deviceSN OBJECT-TYPE
+			SYNTAX DisplayString
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"This device SN."
+			::= {sysInfomation 2 }
+			
+		-- 1.3.6.1.4.1.39871.1.1.3
+		softVersion OBJECT-TYPE
+			SYNTAX DisplayString
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"soft version of device."
+			::= {sysInfomation 3 }
+			
+		-- 1.3.6.1.4.1.39871.1.1.4
+		ubootVersion OBJECT-TYPE
+			SYNTAX DisplayString
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"uboot version."
+			::= {sysInfomation 4 }
+			
+		-- 1.3.6.1.4.1.39871.1.1.5
+		kernelVersion OBJECT-TYPE
+			SYNTAX DisplayString
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"kernel version of device."
+			::= {sysInfomation 5 }
+			
+		-- 1.3.6.1.4.1.39871.1.1.6
+		cpldVersion OBJECT-TYPE
+			SYNTAX DisplayString
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"cpld version of this device."
+			::= {sysInfomation 6 }
+			
+   -- 1.3.6.1.4.1.39871.1.1.7
+		runTime OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"runtime of this device."
+			::= {sysInfomation 7 }   
+			
+	-- 1.3.6.1.4.1.39871.1.1.8
+		  cpuType OBJECT-TYPE
+			SYNTAX DisplayString
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"cpu type."
+			::= {sysInfomation 8 }
+			
+	-- 1.3.6.1.4.1.39871.1.1.9
+		  cpuRate OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"cpu rate"
+			::= {sysInfomation 9 }
+			
+	-- 1.3.6.1.4.1.39871.1.1.10
+		  portNum OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"port num"
+			::= {sysInfomation 10 }
+			
+	-- 1.3.6.1.4.1.39871.1.1.11
+		  sipnum OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"sip trunk num "
+			::= {sysInfomation 11}	 
+
+		--   PSTN Trunk Status
+		--
+		-- 1.3.6.1.4.1.39871.1.2
+		pstnTrunkStatus OBJECT IDENTIFIER ::= {tgStatus  2 }
+
+   -- pstn trunk 39871 table
+   --
+		-- 1.3.6.1.4.1.39871.1.2.1
+		pstnStatusTable  OBJECT-TYPE
+			SYNTAX SEQUENCE OF PstnStatusEntry
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"A pstn Status table which contains several information 
+				 about pstn trunk Status."
+			::= {pstnTrunkStatus  1 }
+			
+		-- 1.3.6.1.4.1.39871.1.2.1.1
+		pstnStatusEntry OBJECT-TYPE
+			SYNTAX PstnStatusEntry
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"An entry of pstn Status table."
+			INDEX { nPstnIndex}
+			::= { pstnStatusTable 1 }
+				
+			PstnStatusEntry ::= SEQUENCE {
+			    nPstnIndex INTEGER,
+			    portType   INTEGER,
+			    workStatus INTEGER,
+			    pcmSsx		 INTEGER,
+		      regStatus  INTEGER,
+		      chTotalNum INTEGER,
+		      chTalkNum  INTEGER,
+		      chIdleNum  INTEGER,
+		      chUsingNum INTEGER,
+		      pstnCharge INTEGER
+    		}
+
+		    nPstnIndex OBJECT-TYPE
+		    SYNTAX     Unsigned32(0..256)
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "pstn port index of this table."
+		    ::= { pstnStatusEntry 1 }
+		    
+		    portType OBJECT-TYPE
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "port type."
+		    ::= { pstnStatusEntry 2 }
+		    
+		    workStatus OBJECT-TYPE
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "work status of this port."
+		    ::= { pstnStatusEntry 3 }
+	    
+		    pcmSsx OBJECT-TYPE
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the signal type of this port."
+		    ::= { pstnStatusEntry 4 }
+		    
+		    regStatus OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "reg status of this port."
+		    ::= { pstnStatusEntry 5 }
+		    
+		    chTotalNum OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the total ch num of this port."
+		    ::= { pstnStatusEntry 6 }
+		    
+		    chTalkNum OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the talking ch num of this port."
+		    ::= { pstnStatusEntry 7 }
+		    
+		    chIdleNum OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the idle ch num of this port."
+		    ::= { pstnStatusEntry 8 }
+		    
+		    chUsingNum OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the using ch num of this port."
+		    ::= { pstnStatusEntry 9 }
+		    
+		    pstnCharge OBJECT-TYPE
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the charge of this port."
+		    ::= { pstnStatusEntry 10 }
+
+    --   SIP trunk Status
+		--
+		-- 1.3.6.1.4.1.39871.1.3
+		sipTrunkStatus OBJECT IDENTIFIER ::= {tgStatus  3 }
+		-- sip trunks status table
+    -- 	
+      sipTrunkStatusTable  OBJECT-TYPE  
+			SYNTAX SEQUENCE OF SipTrunkStatusEntry
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"A sip trunk table."
+			::= {sipTrunkStatus  1 }
+
+		-- 1.3.6.1.4.1.39871.1.3.1
+      sipTrunkStatusEntry OBJECT-TYPE
+			SYNTAX SipTrunkStatusEntry
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"An entry of pstn callstatics table."
+			INDEX { nSipIndex}
+			::= { sipTrunkStatusTable 1 }
+				
+			SipTrunkStatusEntry ::= SEQUENCE {
+			    nSipIndex  INTEGER,
+			    remoteIP   OCTET STRING,
+		      remotePort INTEGER,
+		      regStatus  INTEGER,
+		      chTotalInNum  INTEGER,
+		      chTotalOutNum INTEGER,
+		      chIP2PSTNNum  INTEGER,
+		      chPSTN2IPNum  INTEGER,
+		      sipCharge INTEGER
+		     }
+    		
+		    nSipIndex OBJECT-TYPE
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "sip index of this table."
+		    ::= { sipTrunkStatusEntry 1 }
+		    
+		    remoteIP 	 OBJECT-TYPE
+		    SYNTAX     OCTET STRING
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "remote ip "
+		    ::= { sipTrunkStatusEntry 2 }
+	    
+		    remotePort OBJECT-TYPE
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "remote port"
+		    ::= { sipTrunkStatusEntry 3 }
+		    
+		    regStatus OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "reg status of this trunk."
+		    ::= { sipTrunkStatusEntry 4 }   
+		    
+		    chTotalInNum OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the total call in ch num of this trunk."
+		    ::= { sipTrunkStatusEntry 5 }   
+		    
+		    chTotalOutNum OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the total call out ch num of this trunk."
+		    ::= { sipTrunkStatusEntry 6 }   
+		    
+		    chIP2PSTNNum OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the ip to pstn talking num  of this trunk."
+		    ::= { sipTrunkStatusEntry 7 }   
+		    
+		    chPSTN2IPNum OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the pstn to ip talking num of this trunk."
+		    ::= { sipTrunkStatusEntry 8 }   
+		    
+		    sipCharge OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the charge of this sip trunk."
+		    ::= { sipTrunkStatusEntry 9 }
+
+-- 
+--   channel status
+-- 
+		-- 1.3.6.1.4.1.39871.1.4 
+		channelStatus OBJECT IDENTIFIER ::= {tgStatus 4 }
+		
+		-- 1.3.6.1.4.1.39871.1.4.1
+			idelNum OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"the idel channel num of this device"
+			::= {channelStatus 1 }
+			
+			-- 1.3.6.1.4.1.39871.1.4.2
+			usingNum OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"the using channel num of this device"
+			::= {channelStatus 2 }
+
+-- 
+--   call statis
+-- 
+		-- 1.3.6.1.4.1.39871.1.5
+		callStatis OBJECT IDENTIFIER ::= {tgStatus 5 }
+		
+		-- 1.3.6.1.4.1.39871.1.5.1
+			callCount OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"statics call count"
+			::= {callStatis 1 }
+
+			-- 1.3.6.1.4.1.39871.1.5.2
+			callSuccessCount OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"statics call success count"
+			::= {callStatis 2 }
+			
+			-- 1.3.6.1.4.1.39871.1.5.3
+			callTime OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"statics call time(minute)"
+			::= {callStatis 3 }
+
+-- 
+--   cpu and memory useage
+-- 
+		-- 1.3.6.1.4.1.39871.1.6
+		cpuAndmemory OBJECT IDENTIFIER ::= {tgStatus 6 }
+		
+		-- 1.3.6.1.4.1.39871.1.6.1
+			cpuuse OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"the cpu useage of this device"
+			::= {cpuAndmemory 1 }
+			
+			-- 1.3.6.1.4.1.39871.1.6.2
+			memorysize OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"the memory size of this device"
+			::= {cpuAndmemory 2 }		
+			
+			-- 1.3.6.1.4.1.39871.1.6.3
+			memoryuse OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"the use memory size of this device"
+			::= {cpuAndmemory 3 }		
+			
+			-- 1.3.6.1.4.1.39871.1.6.4
+			flashsize OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"the flash size of this device"
+			::= {cpuAndmemory 4 }	
+			
+			-- 1.3.6.1.4.1.39871.1.6.5
+			flashuse OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"the use flash size of this device"
+			::= {cpuAndmemory 5 }	
+			
+-- 
+--   lockstatus
+-- 
+		-- 1.3.6.1.4.1.39871.1.7
+		lockStatus OBJECT IDENTIFIER ::= {tgStatus 7 }
+		
+		-- 1.3.6.1.4.1.39871.1.7.1
+			lockEnable OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"lock or not with this device"
+			::= {lockStatus 1 }
+			
+			-- 1.3.6.1.4.1.39871.1.7.2
+			lockState OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"this device have locked or not"
+			::= {lockStatus 2 }
+
+-- 
+-- pstn sipaccount 39871 table
+--
+		-- 1.3.6.1.4.1.39871.1.8.1
+		pstnSipAccountTable  OBJECT-TYPE
+			SYNTAX SEQUENCE OF PstnSipAccountEntry
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"A pstn sipaccount table which contains several information 
+				 about pstn Sip Account."
+			::= {pstnTrunkSipAccount  1 }
+
+		-- 1.3.6.1.4.1.39871.1.8.1.1
+		pstnSipAccountEntry OBJECT-TYPE
+			SYNTAX PstnSipAccountEntry
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"An entry of pstn SipAccount table."
+			INDEX { nPstnIndex}
+			::= { pstnSipAccountTable 1 }
+
+			PstnSipAccountEntry ::= SEQUENCE {
+			  nPstnIndex INTEGER,
+		      szPortNumber OCTET STRING,
+		      szextend OCTET STRING
+    		}
+
+		    nPstnIndex OBJECT-TYPE
+		    SYNTAX     Unsigned32(0..256)
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "pstn port index of this table."
+		    ::= { pstnStatusEntry 1 }
+
+		    szPortNumber OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the sip account of this port."
+		    ::= { pstnStatusEntry 2 }
+
+		    szextend OBJECT-TYPE
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "the szextend info."
+		    ::= { pstnStatusEntry 3 }
+
+    -- gwNetwork info
+		-- 1.3.6.1.4.1.39871.2.1
+		-- eth table
+       	-- 
+      ethTable  OBJECT-TYPE
+			SYNTAX SEQUENCE OF EthEntry
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"A eth table."
+			::= {tgNetwork  1 }
+
+		-- 1.3.6.1.4.1.39871.2.1.1
+		  ethEntry OBJECT-TYPE
+			SYNTAX EthEntry
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"An entry of eth table."
+			INDEX { ethIndex}
+			::= { ethTable 1 }
+				
+			EthEntry ::= SEQUENCE {
+			    ethIndex INTEGER,
+			    mac OCTET STRING,
+		      ip OCTET STRING,
+		      mask OCTET STRING,
+		      gateway OCTET STRING,
+		      dns OCTET STRING,
+		      netmode INTEGER,
+		      netinfo OCTET STRING,
+		      connectstatus INTEGER
+		     }
+		     
+			-- 1.3.6.1.4.1.39871.2.1.1
+         	ethEntry OBJECT-TYPE
+			SYNTAX EthEntry
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"An entry of eth table."
+			INDEX { ethIndex}
+			::= { ethTable 1 }
+
+   			ethIndex OBJECT-TYPE
+		    SYNTAX     Unsigned32(0..16)
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "index of this table."
+		    ::= { ethEntry 1 }
+		    
+		    mac OBJECT-TYPE
+		    SYNTAX     OCTET STRING
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "mac address of this eth."
+		    ::= { ethEntry 2 }
+	    
+		    ip OBJECT-TYPE
+		    SYNTAX     OCTET STRING
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "ip address of this eth."
+		    ::= { ethEntry 3 }
+		    
+		    mask OBJECT-TYPE 
+		    SYNTAX     OCTET STRING
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "mask address of this eth."
+		    ::= { ethEntry 4 }
+		    
+		    gateway OBJECT-TYPE
+		    SYNTAX     OCTET STRING
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "work mode set of this eth."
+		    ::= { ethEntry 5 }
+		    
+		    dns OBJECT-TYPE
+		    SYNTAX     OCTET STRING
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "DNS  of this eth."
+		    ::= { ethEntry 6 }
+		    
+		    
+		    netmode OBJECT-TYPE 
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "net mode of this eth."
+		    ::= { ethEntry 7 } 
+		    
+		    netinfo OBJECT-TYPE
+		    SYNTAX     OCTET STRING
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "net receive and send packets info of this eth."
+		    ::= { ethEntry 8 }
+		    
+		    connectstatus OBJECT-TYPE
+		    SYNTAX     Integer32
+		    MAX-ACCESS read-only
+		    STATUS     current
+		    DESCRIPTION
+		    "net status of this eth."
+		    ::= { ethEntry 9 }
+			
+-- 
+-- tgMgmt
+-- 	
+	-- 1.3.6.1.4.1.39871.3.1
+			downloadConfig OBJECT-TYPE
+			SYNTAX OCTET STRING
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"download the config file  with the ftp path."
+			::= { tgMgmt  1 }
+			
+	-- 1.3.6.1.4.1.39871.3.2
+			downloadUpgradePacket OBJECT-TYPE
+			SYNTAX OCTET STRING
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"download the upgrade packet with the ftp path."
+			::= { tgMgmt  2 }
+			
+		
+	-- 1.3.6.1.4.1.39871.3.3
+			cmd OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"send cmd to device."
+			::= { tgMgmt  3}
+			
+	-- 1.3.6.1.4.1.39871.3.4
+			tranferManager OBJECT-TYPE
+			SYNTAX OCTET STRING
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"set the new Manager address"
+			::= { tgMgmt  4}
+						
+		-- 1.3.6.1.4.1.39871.3.5
+			uploadConfig OBJECT-TYPE
+			SYNTAX OCTET STRING
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"upload the config file  with the ftp path."
+			::= { tgMgmt 5}
+			
+		-- 1.3.6.1.4.1.39871.3.6
+			lock OBJECT-TYPE
+			SYNTAX OCTET STRING
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"lock setting."
+			::= { tgMgmt 6}
+
+		-- 1.3.6.1.4.1.39871.3.7
+			rebootSet OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"reboot setting."
+			::= { tgMgmt 7}
+
+		-- 1.3.6.1.4.1.39871.3.8
+			webProxySet OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"webProxy setting."
+			::= { tgMgmt 8}
+
+-- 
+-- tgNotification
+-- 			
+		-- 1.3.6.1.4.1.39871.4.1
+			devUpNotification OBJECT-TYPE
+			SYNTAX OCTET STRING
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"dev up send response with dev base info."
+			::= { tgNotification  1 }
+		
+		-- 1.3.6.1.4.1.39871.4.2
+			devNatNotification OBJECT-TYPE
+			SYNTAX OCTET STRING
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"dev send response for nat."
+			::= { tgNotification  2 }
+			
+			-- 1.3.6.1.4.1.39871.4.3
+			devDownNotification OBJECT-TYPE
+			SYNTAX OCTET STRING
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"dev send shutdown."
+			::= { tgNotification  3 }
+			
+
+-- 
+-- ftpTransferSchedule
+-- 		
+		-- 1.3.6.1.4.1.39871.5.1
+			upgradeSchedule OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"the schedule of transfer upgradepacket."
+			::= { ftpTransferSchedule  1 }
+		
+		-- 1.3.6.1.4.1.39871.5.2
+			dwonloadConfigSchedule OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"the schedule of download config file."
+			::= { ftpTransferSchedule  2 }
+		-- 1.3.6.1.4.1.39871.5.3
+			uploadConfigSchedule OBJECT-TYPE
+			SYNTAX INTEGER
+			MAX-ACCESS read-only
+			STATUS current
+			DESCRIPTION
+				"the schedule of upload config file."
+			::= { ftpTransferSchedule  3 }
+
+END  
