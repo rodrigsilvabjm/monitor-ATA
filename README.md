@@ -23,3 +23,12 @@ docker compose up -d --build
 ```
 
 Documentacao completa: [gateway-monitor/README.md](gateway-monitor/README.md)
+
+## Instalacao sem Docker
+
+Se o servidor for VPS/LXC/OpenVZ e negar montagem de `/proc` para containers,
+use a instalacao nativa com PostgreSQL local e systemd:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-native.sh | bash
+```

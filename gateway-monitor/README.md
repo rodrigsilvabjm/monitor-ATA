@@ -72,6 +72,14 @@ Depois da instalacao, edite:
 
 Altere principalmente `ADMIN_PASSWORD`, `SNMP_HOST`, Telegram e Asterisk.
 
+Se o servidor negar permissao para montar `/proc` durante o build do Docker,
+ele provavelmente nao permite containers Docker completos. Nesse caso, use a
+instalacao nativa:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-native.sh | bash
+```
+
 ## Instalacao local
 
 ```bash

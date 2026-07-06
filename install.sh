@@ -137,7 +137,12 @@ configure_env() {
 start_application() {
   cd "$APP_DIR/src/$APP_SUBDIR"
   info "Subindo containers..."
-  COMPOSE_BAKE=false COMPOSE_DOCKER_CLI_BUILD=0 DOCKER_BUILDKIT=0 docker_compose up -d --build
+  if ! COMPOSE_BAKE=false COMPOSE_DOCKER_CLI_BUILD=0 DOCKER_BUILDKIT=0 docker_compose up -d --build; then
+    warn "O Docker nao conseguiu iniciar containers neste servidor."
+    warn "Em VPS/LXC/OpenVZ, habilite nesting/containers no provedor ou use a instalacao nativa:"
+    printf '\n  curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-native.sh | bash\n\n'
+    exit 1
+  fi
 }
 
 main() {
