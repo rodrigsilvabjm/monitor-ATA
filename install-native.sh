@@ -107,7 +107,12 @@ ensure_python() {
 }
 
 install_python_from_apt() {
-  for version in 3.12 3.11 3.10; do
+  PYTHON_VERSIONS="3.12 3.11 3.10"
+  if [ "${OS_ID:-}" = "ubuntu" ] && [ "${OS_CODENAME:-}" = "focal" ]; then
+    PYTHON_VERSIONS="3.11 3.10"
+  fi
+
+  for version in $PYTHON_VERSIONS; do
     if apt_candidate_exists "python$version" \
       && apt_candidate_exists "python$version-dev" \
       && apt_candidate_exists "python$version-venv"; then
