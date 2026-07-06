@@ -73,12 +73,7 @@ ensure_python() {
     return
   fi
 
-  if apt_candidate_exists python3.12 \
-    && apt_candidate_exists python3.12-dev \
-    && apt_candidate_exists python3.12-venv; then
-    info "Instalando Python 3.12 pelo repositorio disponivel..."
-    as_root apt-get install -y python3.12 python3.12-dev python3.12-venv
-    PYTHON_BIN="python3.12"
+  if install_python_from_apt; then
     return
   fi
 
@@ -87,13 +82,16 @@ ensure_python() {
     as_root apt-get install -y software-properties-common
 
     if ! configure_deadsnakes_repository; then
-      fail "Nao foi possivel configurar o repositorio do Python 3.12. Verifique DNS/internet do servidor e rode novamente."
+      fail "Nao foi possivel configurar o repositorio Python. Verifique DNS/internet do servidor e rode novamente."
     fi
 
     as_root apt-get update
-    as_root apt-get install -y python3.12 python3.12-dev python3.12-venv
-    PYTHON_BIN="python3.12"
-    return
+
+    if install_python_from_apt; then
+      return
+    fi
+
+    fail "Nao encontrei Python 3.12, 3.11 ou 3.10 com pacotes -dev e -venv."
   fi
 
   PYTHON_BIN="python3"
@@ -106,6 +104,24 @@ ensure_python() {
       fail "Python 3.10+ e necessario. Instale Python 3.12 e rode novamente."
       ;;
   esac
+}
+
+install_python_from_apt() {
+  for version in 3.12 3.11 3.10; do
+    if apt_candidate_exists "python$version" \
+      && apt_candidate_exists "python$version-dev" \
+      && apt_candidate_exists "python$version-venv"; then
+      info "Instalando Python $version pelo repositorio disponivel..."
+      as_root apt-get install -y "python$version" "python$version-dev" "python$version-venv"
+      PYTHON_BIN="python$version"
+      if [ "$version" != "3.12" ]; then
+        warn "Python 3.12 nao esta disponivel neste Ubuntu. Usando Python $version."
+      fi
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 apt_candidate_exists() {
