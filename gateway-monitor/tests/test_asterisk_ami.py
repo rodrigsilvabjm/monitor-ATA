@@ -27,7 +27,7 @@ def test_parse_ami_message() -> None:
 
 def test_extract_channel_metadata() -> None:
     assert extract_fxo_line("DAHDI/7-1") == "7"
-    assert extract_fxo_line("SIP/3-00000001") == "3"
+    assert extract_fxo_line("SIP/3-00000001") is None
     assert extract_extension("PJSIP/201-00000001") == "201"
 
 
@@ -62,6 +62,7 @@ def test_ami_monitor_tracks_active_call() -> None:
     assert snapshot.active_calls[0].destination_number == "0800123456"
     assert snapshot.active_calls[0].answered_extension == "200"
     assert snapshot.active_calls[0].fxo_line == "2"
+    assert monitor.active_fxo_line_count([1, 2, 3, 4]) == 1
 
 
 def test_ami_monitor_finishes_call() -> None:

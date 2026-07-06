@@ -225,8 +225,8 @@ GATEWAY_LINE_STATUS_SOURCE=asterisk
 ```
 
 Nesse modo, a ocupacao das linhas vem do contador de chamadas simultaneas do
-Asterisk AMI. O SNMP continua podendo ser usado para validar disponibilidade do
-gateway.
+Asterisk AMI com linha FXO identificada. O SNMP continua podendo ser usado para
+validar disponibilidade do gateway.
 
 O campo usado e `chUsingNum` da tabela `pstnStatusTable`. Valor `0` indica
 linha livre; valor maior que `0` indica linha ocupada.

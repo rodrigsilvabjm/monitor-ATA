@@ -8,7 +8,7 @@ from app.schemas.asterisk import ActiveCall, AsteriskSnapshot
 
 logger = logging.getLogger(__name__)
 
-FXO_PATTERN = re.compile(r"(?:DAHDI|Zap|PJSIP|SIP)/(\d+)", re.IGNORECASE)
+FXO_PATTERN = re.compile(r"(?:DAHDI|Zap)/(\d+)", re.IGNORECASE)
 
 
 class AsteriskAmiMonitor:
@@ -24,6 +24,15 @@ class AsteriskAmiMonitor:
     @property
     def snapshot(self) -> AsteriskSnapshot:
         return self._snapshot
+
+    def active_fxo_line_count(self, monitored_lines: list[int]) -> int:
+        monitored = {str(line_number) for line_number in monitored_lines}
+        active_fxo_lines = {
+            call.fxo_line
+            for call in self._snapshot.active_calls
+            if call.fxo_line and call.fxo_line in monitored
+        }
+        return len(active_fxo_lines)
 
     def start(self) -> None:
         if self._task and not self._task.done():
