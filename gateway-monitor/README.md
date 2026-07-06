@@ -88,6 +88,12 @@ Para Ubuntu 20.04 `focal`, se os pacotes `python3.12-dev` e
 curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-focal.sh | bash
 ```
 
+Se o APT tambem nao entregar `python3.11`, use:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-focal-build.sh | bash
+```
+
 ## Instalacao local
 
 ```bash

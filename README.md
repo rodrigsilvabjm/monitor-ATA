@@ -38,3 +38,9 @@ Para Ubuntu 20.04 `focal` com problemas nos pacotes `python3.12`, use:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-focal.sh | bash
 ```
+
+Se o APT tambem nao entregar `python3.11`, use o instalador que compila Python:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-focal-build.sh | bash
+```
