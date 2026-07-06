@@ -73,7 +73,9 @@ ensure_python() {
     return
   fi
 
-  if apt-cache show python3.12 >/dev/null 2>&1; then
+  if apt_candidate_exists python3.12 \
+    && apt_candidate_exists python3.12-dev \
+    && apt_candidate_exists python3.12-venv; then
     info "Instalando Python 3.12 pelo repositorio disponivel..."
     as_root apt-get install -y python3.12 python3.12-dev python3.12-venv
     PYTHON_BIN="python3.12"
@@ -104,6 +106,11 @@ ensure_python() {
       fail "Python 3.10+ e necessario. Instale Python 3.12 e rode novamente."
       ;;
   esac
+}
+
+apt_candidate_exists() {
+  CANDIDATE="$(apt-cache policy "$1" | awk '/Candidate:/ {print $2; exit}')"
+  [ -n "$CANDIDATE" ] && [ "$CANDIDATE" != "(none)" ]
 }
 
 configure_deadsnakes_repository() {
