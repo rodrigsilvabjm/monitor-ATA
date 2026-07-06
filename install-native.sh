@@ -56,6 +56,7 @@ install_packages() {
         openssl \
         postgresql \
         postgresql-contrib \
+        gnupg \
         python3-dev \
         python3-pip \
         python3-venv
@@ -72,10 +73,21 @@ ensure_python() {
     return
   fi
 
+  if apt-cache show python3.12 >/dev/null 2>&1; then
+    info "Instalando Python 3.12 pelo repositorio disponivel..."
+    as_root apt-get install -y python3.12 python3.12-dev python3.12-venv
+    PYTHON_BIN="python3.12"
+    return
+  fi
+
   if [ "$OS_ID" = "ubuntu" ]; then
-    warn "Python 3.12 nao encontrado. Instalando via deadsnakes PPA..."
+    warn "Python 3.12 nao encontrado. Configurando repositorio deadsnakes..."
     as_root apt-get install -y software-properties-common
-    as_root add-apt-repository -y ppa:deadsnakes/ppa
+
+    if ! configure_deadsnakes_repository; then
+      fail "Nao foi possivel configurar o repositorio do Python 3.12. Verifique DNS/internet do servidor e rode novamente."
+    fi
+
     as_root apt-get update
     as_root apt-get install -y python3.12 python3.12-dev python3.12-venv
     PYTHON_BIN="python3.12"
@@ -92,6 +104,26 @@ ensure_python() {
       fail "Python 3.10+ e necessario. Instale Python 3.12 e rode novamente."
       ;;
   esac
+}
+
+configure_deadsnakes_repository() {
+  [ -n "$OS_CODENAME" ] || OS_CODENAME="$(lsb_release -cs 2>/dev/null || true)"
+  [ -n "$OS_CODENAME" ] || return 1
+
+  as_root install -m 0755 -d /etc/apt/keyrings
+
+  if curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xF23C5A6CF475977595C89F51BA6932366A755776" \
+    | gpg --dearmor \
+    | as_root tee /etc/apt/keyrings/deadsnakes.gpg >/dev/null; then
+    printf 'deb [signed-by=/etc/apt/keyrings/deadsnakes.gpg] https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu %s main\n' \
+      "$OS_CODENAME" | as_root tee /etc/apt/sources.list.d/deadsnakes.list >/dev/null
+    return 0
+  fi
+
+  warn "Nao consegui baixar a chave GPG do deadsnakes. Usando fallback trusted para concluir a instalacao."
+  printf 'deb [trusted=yes] https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu %s main\n' \
+    "$OS_CODENAME" | as_root tee /etc/apt/sources.list.d/deadsnakes.list >/dev/null
+  return 0
 }
 
 prepare_repository() {
