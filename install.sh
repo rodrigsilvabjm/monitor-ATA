@@ -137,7 +137,7 @@ configure_env() {
 start_application() {
   cd "$APP_DIR/src/$APP_SUBDIR"
   info "Subindo containers..."
-  docker_compose up -d --build
+  COMPOSE_BAKE=false COMPOSE_DOCKER_CLI_BUILD=0 DOCKER_BUILDKIT=0 docker_compose up -d --build
 }
 
 main() {
