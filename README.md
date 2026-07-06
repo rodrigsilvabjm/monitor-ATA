@@ -32,3 +32,9 @@ use a instalacao nativa com PostgreSQL local e systemd:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-native.sh | bash
 ```
+
+Para Ubuntu 20.04 `focal` com problemas nos pacotes `python3.12`, use:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-focal.sh | bash
+```

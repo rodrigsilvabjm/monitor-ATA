@@ -80,6 +80,14 @@ instalacao nativa:
 curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-native.sh | bash
 ```
 
+Para Ubuntu 20.04 `focal`, se os pacotes `python3.12-dev` e
+`python3.12-venv` nao existirem no APT, use o instalador especifico com Python
+3.11:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rodrigsilvabjm/monitor-ATA/main/install-focal.sh | bash
+```
+
 ## Instalacao local
 
 ```bash
