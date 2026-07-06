@@ -82,3 +82,24 @@ def test_ami_monitor_finishes_call() -> None:
 
     assert monitor.snapshot.simultaneous_calls == 0
     assert monitor.snapshot.average_duration_seconds == 42
+
+
+def test_ami_monitor_tracks_core_show_channels() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        monitor = AsteriskAmiMonitor(get_settings())
+        await monitor.process_event(
+            {
+                "Event": "CoreShowChannel",
+                "Uniqueid": "core-1",
+                "CallerIDNum": "1135984273389",
+                "Exten": "s",
+                "Channel": "DAHDI/2-1",
+            }
+        )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert monitor.snapshot.simultaneous_calls == 1
+    assert monitor.snapshot.active_calls[0].fxo_line == "2"
+    assert monitor.active_fxo_line_count([1, 2, 3, 4]) == 1

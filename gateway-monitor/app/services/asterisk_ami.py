@@ -15,6 +15,8 @@ class AsteriskAmiMonitor:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._active_calls: dict[str, ActiveCall] = {}
+        self._core_poll_seen_ids: set[str] = set()
+        self._core_poll_active = False
         self._completed_durations: list[int] = []
         self._missed_calls = 0
         self._snapshot = self._build_snapshot(connected=False)
@@ -97,12 +99,20 @@ class AsteriskAmiMonitor:
             await self._login(writer)
             self._snapshot = self._build_snapshot(connected=True)
             await self._broadcast()
+            poll_task = asyncio.create_task(self._poll_core_channels(writer))
 
-            while True:
-                event = await read_ami_message(reader)
-                if not event:
-                    raise ConnectionError("Asterisk AMI connection closed")
-                await self.process_event(event)
+            try:
+                while True:
+                    event = await read_ami_message(reader)
+                    if not event:
+                        raise ConnectionError("Asterisk AMI connection closed")
+                    await self.process_event(event)
+            finally:
+                poll_task.cancel()
+                try:
+                    await poll_task
+                except asyncio.CancelledError:
+                    pass
         finally:
             writer.close()
             await writer.wait_closed()
@@ -122,6 +132,17 @@ class AsteriskAmiMonitor:
         writer.write(payload.encode("utf-8"))
         await writer.drain()
 
+    async def _poll_core_channels(self, writer: asyncio.StreamWriter) -> None:
+        while True:
+            self._core_poll_active = True
+            self._core_poll_seen_ids = set()
+            writer.write(
+                b"Action: CoreShowChannels\r\n"
+                b"ActionID: gateway-monitor-core-show\r\n\r\n"
+            )
+            await writer.drain()
+            await asyncio.sleep(max(1.0, self._settings.snmp_poll_interval))
+
     async def process_event(self, event: dict[str, str]) -> None:
         event_name = event.get("Event", "").lower()
 
@@ -131,6 +152,15 @@ class AsteriskAmiMonitor:
             self._mark_answered(event)
         elif event_name in {"hangup", "cdr"}:
             self._finish_call(event)
+        elif event_name == "coreshowchannel":
+            self._upsert_call(event)
+            unique_id = get_unique_id(event)
+            if unique_id:
+                self._core_poll_seen_ids.add(unique_id)
+        elif event_name == "coreshowchannelscomplete":
+            if self._core_poll_active:
+                self._remove_calls_missing_from_core_poll()
+                self._core_poll_active = False
         else:
             return
 
@@ -166,6 +196,17 @@ class AsteriskAmiMonitor:
             extract_fxo_line(event.get("DestChannel")),
         )
         self._active_calls[unique_id] = call
+
+    def _remove_calls_missing_from_core_poll(self) -> None:
+        if not self._core_poll_seen_ids:
+            self._active_calls = {}
+            return
+
+        self._active_calls = {
+            unique_id: call
+            for unique_id, call in self._active_calls.items()
+            if unique_id in self._core_poll_seen_ids
+        }
 
     def _mark_answered(self, event: dict[str, str]) -> None:
         unique_id = get_unique_id(event)
