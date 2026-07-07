@@ -32,12 +32,26 @@ class AsteriskAmiMonitor:
         return len(self.active_fxo_lines(monitored_lines))
 
     def active_fxo_lines(self, monitored_lines: list[int]) -> set[int]:
-        monitored = {str(line_number) for line_number in monitored_lines}
-        return {
+        monitored = set(monitored_lines)
+        monitored_as_text = {str(line_number) for line_number in monitored_lines}
+        active_lines = {
             int(call.fxo_line)
             for call in self._snapshot.active_calls
-            if call.fxo_line and call.fxo_line in monitored
+            if call.fxo_line and call.fxo_line in monitored_as_text
         }
+        missing_lines = [
+            line_number for line_number in monitored_lines if line_number not in active_lines
+        ]
+        unassigned_external_calls = [
+            call
+            for call in self._snapshot.active_calls
+            if not call.fxo_line and is_likely_external_call(call)
+        ]
+
+        for line_number, _call in zip(missing_lines, unassigned_external_calls):
+            active_lines.add(line_number)
+
+        return active_lines.intersection(monitored)
 
     def start(self) -> None:
         if self._task and not self._task.done():
@@ -427,6 +441,16 @@ def extract_extension(channel: str | None) -> str | None:
     if not channel or "/" not in channel:
         return None
     return channel.split("/", maxsplit=1)[1].split("-", maxsplit=1)[0]
+
+
+def is_likely_external_call(call: ActiveCall) -> bool:
+    for value in (call.source_number, call.destination_number):
+        if not value:
+            continue
+        digits = re.sub(r"\D", "", value)
+        if len(digits) >= 10:
+            return True
+    return False
 
 
 def parse_duration(event: dict[str, str]) -> int | None:

@@ -284,3 +284,32 @@ def test_ami_monitor_keeps_all_four_linked_fxo_lines() -> None:
     monitor = asyncio.run(scenario())
 
     assert monitor.active_fxo_lines([1, 2, 3, 4]) == {1, 2, 3, 4}
+
+
+def test_ami_monitor_infers_missing_line_from_unassigned_external_call() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        await monitor.process_event(
+            {
+                "Event": "CoreShowChannel",
+                "Uniqueid": "external-without-fxo",
+                "CallerIDNum": "1132984773794",
+            }
+        )
+        for line, sip_peer in (("1", "3034"), ("2", "3035"), ("4", "3037")):
+            await monitor.process_event(
+                {
+                    "Event": "CoreShowChannel",
+                    "Uniqueid": f"line-{line}",
+                    "CallerIDNum": "1132984923166",
+                    "Destination": sip_peer,
+                }
+            )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {1, 2, 3, 4}
