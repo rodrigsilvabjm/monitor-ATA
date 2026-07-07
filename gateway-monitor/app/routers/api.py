@@ -15,7 +15,13 @@ from app.schemas.gateway_event import GatewayEventResponse
 from app.schemas.gateway_line import GatewayLinesSnapshot
 from app.schemas.status import StatusResponse
 from app.services.monitoring import asterisk_ami_monitor, gateway_line_monitor
-from app.services.reports import build_events_excel, build_events_pdf
+from app.services.reports import (
+    build_events_excel,
+    build_events_pdf,
+    build_report_summary,
+    normalize_period,
+    report_summary_to_dict,
+)
 from app.services.status import build_status_response
 
 router = APIRouter(tags=["api"])
@@ -65,38 +71,70 @@ def get_gateway_events(
 
 
 @router.get("/reports/pdf")
-def events_pdf_report(db: Session = Depends(get_db)) -> StreamingResponse:
+def events_pdf_report(
+    period: str = "24h",
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    period_key = normalize_period(period)
     events = (
         db.query(GatewayEvent)
         .order_by(desc(GatewayEvent.created_at))
-        .limit(500)
+        .limit(5000)
         .all()
     )
-    content = build_events_pdf(list(events))
+    content = build_events_pdf(list(events), period_key)
     return StreamingResponse(
         BytesIO(content),
         media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=gateway-events.pdf"},
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=gateway-report-{period_key}.pdf"
+            )
+        },
     )
 
 
 @router.get("/reports/excel")
-def events_excel_report(db: Session = Depends(get_db)) -> StreamingResponse:
+def events_excel_report(
+    period: str = "24h",
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    period_key = normalize_period(period)
     events = (
         db.query(GatewayEvent)
         .order_by(desc(GatewayEvent.created_at))
-        .limit(500)
+        .limit(5000)
         .all()
     )
-    content = build_events_excel(list(events))
+    content = build_events_excel(list(events), period_key)
     return StreamingResponse(
         BytesIO(content),
         media_type=(
             "application/vnd.openxmlformats-officedocument."
             "spreadsheetml.sheet"
         ),
-        headers={"Content-Disposition": "attachment; filename=gateway-events.xlsx"},
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=gateway-report-{period_key}.xlsx"
+            )
+        },
     )
+
+
+@router.get("/reports/summary")
+def events_report_summary(
+    period: str = "24h",
+    db: Session = Depends(get_db),
+) -> dict:
+    period_key = normalize_period(period)
+    events = (
+        db.query(GatewayEvent)
+        .order_by(desc(GatewayEvent.created_at))
+        .limit(5000)
+        .all()
+    )
+    summary = build_report_summary(list(events), period_key)
+    return report_summary_to_dict(summary)
 
 
 @router.get("/metrics")

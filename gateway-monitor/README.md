@@ -387,9 +387,15 @@ O dashboard principal `/` exige login. O dashboard para TV fica em `/tv`.
 Relatorios:
 
 ```text
-GET /api/reports/pdf
-GET /api/reports/excel
+GET /api/reports/summary?period=24h
+GET /api/reports/pdf?period=24h
+GET /api/reports/excel?period=24h
 ```
+
+Periodos aceitos: `24h`, `7d`, `1w`, `30d`, `1m`.
+
+Os relatorios PDF e Excel mostram resumo de utilizacao, ranking por linha/SIP,
+grafico por janela, total de congestionamentos e historico bruto em aba separada.
 
 Multi-gateway:
 
