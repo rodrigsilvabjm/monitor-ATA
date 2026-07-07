@@ -5,6 +5,7 @@ from app.services.asterisk_ami import (
     AsteriskAmiMonitor,
     extract_extension,
     extract_fxo_line,
+    extract_fxo_line_from_event,
     parse_ami_message,
 )
 
@@ -31,6 +32,13 @@ def test_extract_channel_metadata() -> None:
     assert extract_fxo_line("SIP/3035-00000001", {"3035": "2"}) == "2"
     assert extract_fxo_line("PJSIP/3037-00000001", {"3037": "4"}) == "4"
     assert extract_extension("PJSIP/201-00000001") == "201"
+
+
+def test_extract_fxo_line_from_event_fields() -> None:
+    mapping = {"3034": "1", "3035": "2", "3036": "3", "3037": "4"}
+
+    assert extract_fxo_line_from_event({"Exten": "3035"}, mapping) == "2"
+    assert extract_fxo_line_from_event({"Destination": "3037"}, mapping) == "4"
 
 
 async def _process_call_flow() -> AsteriskAmiMonitor:
@@ -130,4 +138,27 @@ def test_ami_monitor_maps_sip_peer_to_fxo_line() -> None:
 
     assert monitor.snapshot.active_calls[0].fxo_line == "2"
     assert monitor.active_fxo_line_count([1, 2, 3, 4]) == 1
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {2}
+
+
+def test_ami_monitor_maps_destination_peer_to_fxo_line() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        await monitor.process_event(
+            {
+                "Event": "CoreShowChannel",
+                "Uniqueid": "core-destination-1",
+                "CallerIDNum": "1135984273389",
+                "Exten": "3035",
+                "Channel": "SIP/2010-00000001",
+            }
+        )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert monitor.snapshot.active_calls[0].fxo_line == "2"
     assert monitor.active_fxo_lines([1, 2, 3, 4]) == {2}

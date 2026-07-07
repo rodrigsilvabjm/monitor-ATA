@@ -60,8 +60,8 @@ def build_congestion_started_message(
 ) -> str:
     local_time = event_time.astimezone(ZoneInfo(timezone))
     return (
-        "🚨 Gateway Monitor\n\n"
-        "Todas as linhas estão ocupadas.\n\n"
+        "\U0001F6A8 Gateway Monitor\n\n"
+        "Todas as linhas est\u00e3o ocupadas.\n\n"
         "Data:\n"
         f"{local_time.strftime('%d/%m/%Y')}\n\n"
         "Hora:\n"
@@ -71,8 +71,8 @@ def build_congestion_started_message(
 
 def build_congestion_ended_message(duration_seconds: int) -> str:
     return (
-        "✅ Congestionamento encerrado\n\n"
-        "Duração\n\n"
+        "\u2705 Congestionamento encerrado\n\n"
+        "Dura\u00e7\u00e3o\n\n"
         f"{format_duration_pt_br(duration_seconds)}"
     )
 

@@ -58,6 +58,30 @@ def test_asterisk_source_marks_specific_fxo_line() -> None:
     assert snapshot.lines[1].raw_value == "2"
 
 
+def test_asterisk_source_works_when_snmp_is_disabled() -> None:
+    settings = get_settings().model_copy(
+        update={
+            "gateway_line_status_source": "asterisk",
+            "gateway_monitored_lines": "1,2,3,4",
+            "snmp_enabled": False,
+        }
+    )
+    monitor = GatewayLineMonitor(
+        settings,
+        active_line_provider=lambda: ({1, 2, 3, 4}, True),
+    )
+
+    snapshot = asyncio.run(monitor.refresh_once())
+
+    assert snapshot.connected is True
+    assert {line.line: line.status for line in snapshot.lines} == {
+        1: "busy",
+        2: "busy",
+        3: "busy",
+        4: "busy",
+    }
+
+
 def test_snmp_symbolic_oid_identity_parsing() -> None:
     client = PySnmpClient(get_settings())
     identity = client._build_object_identity(

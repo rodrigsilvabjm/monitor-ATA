@@ -14,8 +14,8 @@ def test_build_congestion_started_message() -> None:
     )
 
     assert message == (
-        "🚨 Gateway Monitor\n\n"
-        "Todas as linhas estão ocupadas.\n\n"
+        "\U0001F6A8 Gateway Monitor\n\n"
+        "Todas as linhas est\u00e3o ocupadas.\n\n"
         "Data:\n"
         "06/07/2026\n\n"
         "Hora:\n"
@@ -25,8 +25,8 @@ def test_build_congestion_started_message() -> None:
 
 def test_build_congestion_ended_message() -> None:
     assert build_congestion_ended_message(192) == (
-        "✅ Congestionamento encerrado\n\n"
-        "Duração\n\n"
+        "\u2705 Congestionamento encerrado\n\n"
+        "Dura\u00e7\u00e3o\n\n"
         "3 minutos e 12 segundos"
     )
 

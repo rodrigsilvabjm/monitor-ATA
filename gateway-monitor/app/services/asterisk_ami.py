@@ -195,8 +195,7 @@ class AsteriskAmiMonitor:
         )
         call.fxo_line = first_present(
             call.fxo_line,
-            extract_fxo_line(event.get("Channel"), self._fxo_sip_mapping),
-            extract_fxo_line(event.get("DestChannel"), self._fxo_sip_mapping),
+            extract_fxo_line_from_event(event, self._fxo_sip_mapping),
         )
         self._active_calls[unique_id] = call
 
@@ -228,8 +227,7 @@ class AsteriskAmiMonitor:
         )
         call.fxo_line = first_present(
             call.fxo_line,
-            extract_fxo_line(event.get("Channel"), self._fxo_sip_mapping),
-            extract_fxo_line(event.get("DestChannel"), self._fxo_sip_mapping),
+            extract_fxo_line_from_event(event, self._fxo_sip_mapping),
         )
 
     def _finish_call(self, event: dict[str, str]) -> None:
@@ -342,6 +340,33 @@ def extract_fxo_line(
     if not sip_peer:
         return None
     return (sip_mapping or {}).get(sip_peer)
+
+
+def extract_fxo_line_from_event(
+    event: dict[str, str],
+    sip_mapping: dict[str, str] | None = None,
+) -> str | None:
+    mapping = sip_mapping or {}
+    channel_line = first_present(
+        extract_fxo_line(event.get("Channel"), mapping),
+        extract_fxo_line(event.get("DestChannel"), mapping),
+    )
+    if channel_line:
+        return channel_line
+
+    for key in (
+        "Exten",
+        "DestExten",
+        "Destination",
+        "DestCallerIDNum",
+        "ConnectedLineNum",
+        "DestConnectedLineNum",
+    ):
+        value = event.get(key)
+        if value in mapping:
+            return mapping[value]
+
+    return None
 
 
 def extract_extension(channel: str | None) -> str | None:

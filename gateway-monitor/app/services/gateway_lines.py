@@ -58,11 +58,6 @@ class GatewayLineMonitor:
         self._subscribers.discard(queue)
 
     async def refresh_once(self) -> GatewayLinesSnapshot:
-        if not self._settings.snmp_enabled:
-            self._snapshot = self._build_disabled_snapshot()
-            await self._broadcast(self._snapshot)
-            return self._snapshot
-
         monitored_lines = self._settings.monitored_line_numbers
         if (
             self._settings.use_asterisk_line_status
@@ -77,6 +72,11 @@ class GatewayLineMonitor:
             )
             if self._event_recorder:
                 self._event_recorder.process_snapshot(self._snapshot)
+            await self._broadcast(self._snapshot)
+            return self._snapshot
+
+        if not self._settings.snmp_enabled:
+            self._snapshot = self._build_disabled_snapshot()
             await self._broadcast(self._snapshot)
             return self._snapshot
 
