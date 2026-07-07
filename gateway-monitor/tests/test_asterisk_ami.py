@@ -28,6 +28,8 @@ def test_parse_ami_message() -> None:
 def test_extract_channel_metadata() -> None:
     assert extract_fxo_line("DAHDI/7-1") == "7"
     assert extract_fxo_line("SIP/3-00000001") is None
+    assert extract_fxo_line("SIP/3035-00000001", {"3035": "2"}) == "2"
+    assert extract_fxo_line("PJSIP/3037-00000001", {"3037": "4"}) == "4"
     assert extract_extension("PJSIP/201-00000001") == "201"
 
 
@@ -101,5 +103,28 @@ def test_ami_monitor_tracks_core_show_channels() -> None:
     monitor = asyncio.run(scenario())
 
     assert monitor.snapshot.simultaneous_calls == 1
+    assert monitor.snapshot.active_calls[0].fxo_line == "2"
+    assert monitor.active_fxo_line_count([1, 2, 3, 4]) == 1
+
+
+def test_ami_monitor_maps_sip_peer_to_fxo_line() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        await monitor.process_event(
+            {
+                "Event": "CoreShowChannel",
+                "Uniqueid": "core-sip-1",
+                "CallerIDNum": "1135984273389",
+                "Exten": "s",
+                "Channel": "SIP/3035-00000001",
+            }
+        )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
     assert monitor.snapshot.active_calls[0].fxo_line == "2"
     assert monitor.active_fxo_line_count([1, 2, 3, 4]) == 1

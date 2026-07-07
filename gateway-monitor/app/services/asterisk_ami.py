@@ -14,6 +14,7 @@ FXO_PATTERN = re.compile(r"(?:DAHDI|Zap)/(\d+)", re.IGNORECASE)
 class AsteriskAmiMonitor:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        self._fxo_sip_mapping = settings.asterisk_fxo_sip_mapping
         self._active_calls: dict[str, ActiveCall] = {}
         self._core_poll_seen_ids: set[str] = set()
         self._core_poll_active = False
@@ -192,8 +193,8 @@ class AsteriskAmiMonitor:
         )
         call.fxo_line = first_present(
             call.fxo_line,
-            extract_fxo_line(event.get("Channel")),
-            extract_fxo_line(event.get("DestChannel")),
+            extract_fxo_line(event.get("Channel"), self._fxo_sip_mapping),
+            extract_fxo_line(event.get("DestChannel"), self._fxo_sip_mapping),
         )
         self._active_calls[unique_id] = call
 
@@ -225,8 +226,8 @@ class AsteriskAmiMonitor:
         )
         call.fxo_line = first_present(
             call.fxo_line,
-            extract_fxo_line(event.get("Channel")),
-            extract_fxo_line(event.get("DestChannel")),
+            extract_fxo_line(event.get("Channel"), self._fxo_sip_mapping),
+            extract_fxo_line(event.get("DestChannel"), self._fxo_sip_mapping),
         )
 
     def _finish_call(self, event: dict[str, str]) -> None:
@@ -325,13 +326,20 @@ def first_present(*values: str | None) -> str | None:
     return None
 
 
-def extract_fxo_line(channel: str | None) -> str | None:
+def extract_fxo_line(
+    channel: str | None,
+    sip_mapping: dict[str, str] | None = None,
+) -> str | None:
     if not channel:
         return None
     match = FXO_PATTERN.search(channel)
-    if not match:
+    if match:
+        return match.group(1)
+
+    sip_peer = extract_extension(channel)
+    if not sip_peer:
         return None
-    return match.group(1)
+    return (sip_mapping or {}).get(sip_peer)
 
 
 def extract_extension(channel: str | None) -> str | None:

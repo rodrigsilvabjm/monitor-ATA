@@ -56,6 +56,10 @@ class Settings(BaseSettings):
         default=5.0,
         alias="ASTERISK_AMI_RECONNECT_DELAY",
     )
+    asterisk_fxo_sip_map: str | None = Field(
+        default=None,
+        alias="ASTERISK_FXO_SIP_MAP",
+    )
 
     backup_enabled: bool = Field(default=False, alias="BACKUP_ENABLED")
     backup_interval_minutes: int = Field(default=60, alias="BACKUP_INTERVAL_MINUTES")
@@ -155,6 +159,22 @@ class Settings(BaseSettings):
     @property
     def use_asterisk_line_status(self) -> bool:
         return self.gateway_line_status_source.strip().lower() == "asterisk"
+
+    @property
+    def asterisk_fxo_sip_mapping(self) -> dict[str, str]:
+        if not self.asterisk_fxo_sip_map:
+            return {}
+
+        mapping: dict[str, str] = {}
+        for item in self.asterisk_fxo_sip_map.split(","):
+            if ":" not in item:
+                continue
+            sip_peer, fxo_line = item.split(":", maxsplit=1)
+            sip_peer = sip_peer.strip()
+            fxo_line = fxo_line.strip()
+            if sip_peer and fxo_line.isdigit():
+                mapping[sip_peer] = fxo_line
+        return mapping
 
 
 @lru_cache
