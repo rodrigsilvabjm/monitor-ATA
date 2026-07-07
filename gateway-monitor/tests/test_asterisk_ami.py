@@ -6,6 +6,7 @@ from app.services.asterisk_ami import (
     extract_extension,
     extract_fxo_line,
     extract_fxo_line_from_event,
+    extract_internal_extension_from_event,
     parse_ami_message,
 )
 
@@ -45,6 +46,32 @@ def test_extract_fxo_line_from_event_fields() -> None:
             mapping,
         )
         == "3"
+    )
+
+
+def test_extract_internal_extension_from_event() -> None:
+    mapping = {"3034": "1", "3035": "2", "3036": "3", "3037": "4"}
+
+    assert (
+        extract_internal_extension_from_event(
+            {"Channel": "SIP/2057-000004ee"},
+            mapping,
+        )
+        == "2057"
+    )
+    assert (
+        extract_internal_extension_from_event(
+            {"ApplicationData": "Dial(SIP/2028/332984322218,,F)"},
+            mapping,
+        )
+        == "2028"
+    )
+    assert (
+        extract_internal_extension_from_event(
+            {"Channel": "SIP/3035-000004ee"},
+            mapping,
+        )
+        is None
     )
 
 
@@ -313,3 +340,45 @@ def test_ami_monitor_infers_missing_line_from_unassigned_external_call() -> None
     monitor = asyncio.run(scenario())
 
     assert monitor.active_fxo_lines([1, 2, 3, 4]) == {1, 2, 3, 4}
+
+
+def test_ami_monitor_fills_extension_from_channel_when_numbers_are_missing() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        await monitor.process_event(
+            {
+                "Event": "CoreShowChannel",
+                "Uniqueid": "channel-without-numbers",
+                "Channel": "SIP/2057-000004ee",
+                "Application": "AgentLogin",
+            }
+        )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert monitor.snapshot.active_calls[0].answered_extension == "2057"
+
+
+def test_ami_monitor_fills_extension_from_application_data() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        await monitor.process_event(
+            {
+                "Event": "CoreShowChannel",
+                "Uniqueid": "dial-without-destination",
+                "Channel": "SIP/1132984322218-000004ee",
+                "ApplicationData": "Dial(SIP/2028/332984322218,,F)",
+            }
+        )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert monitor.snapshot.active_calls[0].answered_extension == "2028"

@@ -9,6 +9,7 @@ from app.schemas.asterisk import ActiveCall, AsteriskSnapshot
 logger = logging.getLogger(__name__)
 
 FXO_PATTERN = re.compile(r"(?:DAHDI|Zap)/(\d+)", re.IGNORECASE)
+SIP_TARGET_PATTERN = re.compile(r"(?:SIP|PJSIP)/(\d+)", re.IGNORECASE)
 
 
 class AsteriskAmiMonitor:
@@ -213,6 +214,10 @@ class AsteriskAmiMonitor:
             event.get("Destination"),
             event.get("DestExten"),
         )
+        call.answered_extension = first_present(
+            call.answered_extension,
+            extract_internal_extension_from_event(event, self._fxo_sip_mapping),
+        )
         call.fxo_line = first_present(
             extract_fxo_line_from_event(
                 event,
@@ -250,7 +255,7 @@ class AsteriskAmiMonitor:
             event.get("ConnectedLineNum"),
             event.get("DestConnectedLineNum"),
             event.get("Exten"),
-            extract_extension(event.get("DestChannel")),
+            extract_internal_extension_from_event(event, self._fxo_sip_mapping),
         )
         call.fxo_line = first_present(
             extract_fxo_line_from_event(
@@ -437,10 +442,48 @@ def extract_fxo_line_from_event(
     )
 
 
+def extract_internal_extension_from_event(
+    event: dict[str, str],
+    sip_mapping: dict[str, str] | None = None,
+) -> str | None:
+    mapping = sip_mapping or {}
+    candidates = [
+        extract_extension(event.get("Channel")),
+        extract_extension(event.get("DestChannel")),
+        extract_sip_target(event.get("ApplicationData")),
+        event.get("ConnectedLineNum"),
+        event.get("DestConnectedLineNum"),
+    ]
+
+    for candidate in candidates:
+        if is_internal_extension(candidate, mapping):
+            return candidate
+    return None
+
+
+def extract_sip_target(value: str | None) -> str | None:
+    if not value:
+        return None
+    match = SIP_TARGET_PATTERN.search(value)
+    return match.group(1) if match else None
+
+
 def extract_extension(channel: str | None) -> str | None:
     if not channel or "/" not in channel:
         return None
     return channel.split("/", maxsplit=1)[1].split("-", maxsplit=1)[0]
+
+
+def is_internal_extension(
+    value: str | None,
+    sip_mapping: dict[str, str] | None = None,
+) -> bool:
+    if not value:
+        return False
+    digits = re.sub(r"\D", "", value)
+    if not 2 <= len(digits) <= 6:
+        return False
+    return digits not in (sip_mapping or {})
 
 
 def is_likely_external_call(call: ActiveCall) -> bool:
