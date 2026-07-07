@@ -2,11 +2,14 @@ import asyncio
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from app.config import Settings
 from app.schemas.gateway_line import GatewayLineState, GatewayLinesSnapshot
-from app.services.event_recorder import GatewayEventRecorder
 from app.services.snmp_client import PySnmpClient, SnmpClient
+
+if TYPE_CHECKING:
+    from app.services.event_recorder import GatewayEventRecorder
 
 logger = logging.getLogger(__name__)
 
@@ -16,13 +19,13 @@ class GatewayLineMonitor:
         self,
         settings: Settings,
         snmp_client: SnmpClient | None = None,
-        event_recorder: GatewayEventRecorder | None = None,
-        active_call_count_provider: Callable[[], tuple[int, bool]] | None = None,
+        event_recorder: "GatewayEventRecorder | None" = None,
+        active_line_provider: Callable[[], tuple[set[int], bool]] | None = None,
     ) -> None:
         self._settings = settings
         self._snmp_client = snmp_client or PySnmpClient(settings)
         self._event_recorder = event_recorder
-        self._active_call_count_provider = active_call_count_provider
+        self._active_line_provider = active_line_provider
         self._snapshot = self._build_initial_snapshot()
         self._subscribers: set[asyncio.Queue[GatewayLinesSnapshot]] = set()
         self._task: asyncio.Task[None] | None = None
@@ -63,14 +66,13 @@ class GatewayLineMonitor:
         monitored_lines = self._settings.monitored_line_numbers
         if (
             self._settings.use_asterisk_line_status
-            and self._active_call_count_provider
+            and self._active_line_provider
         ):
-            active_calls, connected = self._active_call_count_provider()
-            self._snapshot = self._build_busy_count_snapshot(
+            active_lines, connected = self._active_line_provider()
+            self._snapshot = self._build_specific_busy_lines_snapshot(
                 monitored_lines=monitored_lines,
-                busy_count=active_calls,
+                active_lines=active_lines,
                 connected=connected,
-                raw_value=str(active_calls),
                 message="Fonte: Asterisk AMI",
             )
             if self._event_recorder:
@@ -171,6 +173,32 @@ class GatewayLineMonitor:
                     message=message,
                 )
                 for index, line_number in enumerate(monitored_lines)
+            ],
+        )
+
+    def _build_specific_busy_lines_snapshot(
+        self,
+        monitored_lines: list[int],
+        active_lines: set[int],
+        connected: bool,
+        message: str | None,
+    ) -> GatewayLinesSnapshot:
+        monitored = set(monitored_lines)
+        safe_active_lines = active_lines.intersection(monitored)
+        raw_value = ",".join(str(line) for line in sorted(safe_active_lines)) or "0"
+        return GatewayLinesSnapshot(
+            gateway_host=self._settings.snmp_host,
+            connected=connected,
+            updated_at=datetime.now(UTC),
+            lines=[
+                GatewayLineState(
+                    line=line_number,
+                    label=f"Linha {line_number}",
+                    status="busy" if line_number in safe_active_lines else "idle",
+                    raw_value=raw_value,
+                    message=message,
+                )
+                for line_number in monitored_lines
             ],
         )
 

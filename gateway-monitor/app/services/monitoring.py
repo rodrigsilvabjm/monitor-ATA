@@ -16,8 +16,8 @@ gateway_event_recorder = GatewayEventRecorder(
 gateway_line_monitor = GatewayLineMonitor(
     settings,
     event_recorder=gateway_event_recorder,
-    active_call_count_provider=lambda: (
-        asterisk_ami_monitor.active_fxo_line_count(settings.monitored_line_numbers),
+    active_line_provider=lambda: (
+        asterisk_ami_monitor.active_fxo_lines(settings.monitored_line_numbers),
         asterisk_ami_monitor.snapshot.connected,
     ),
 )

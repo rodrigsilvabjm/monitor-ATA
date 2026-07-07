@@ -65,6 +65,7 @@ def test_ami_monitor_tracks_active_call() -> None:
     assert snapshot.active_calls[0].answered_extension == "200"
     assert snapshot.active_calls[0].fxo_line == "2"
     assert monitor.active_fxo_line_count([1, 2, 3, 4]) == 1
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {2}
 
 
 def test_ami_monitor_finishes_call() -> None:
@@ -105,6 +106,7 @@ def test_ami_monitor_tracks_core_show_channels() -> None:
     assert monitor.snapshot.simultaneous_calls == 1
     assert monitor.snapshot.active_calls[0].fxo_line == "2"
     assert monitor.active_fxo_line_count([1, 2, 3, 4]) == 1
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {2}
 
 
 def test_ami_monitor_maps_sip_peer_to_fxo_line() -> None:
@@ -128,3 +130,4 @@ def test_ami_monitor_maps_sip_peer_to_fxo_line() -> None:
 
     assert monitor.snapshot.active_calls[0].fxo_line == "2"
     assert monitor.active_fxo_line_count([1, 2, 3, 4]) == 1
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {2}
