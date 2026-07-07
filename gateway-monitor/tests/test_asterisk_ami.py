@@ -192,3 +192,32 @@ def test_ami_monitor_prefers_destination_peer_over_channel_peer() -> None:
 
     assert monitor.snapshot.active_calls[0].fxo_line == "3"
     assert monitor.active_fxo_lines([1, 2, 3, 4]) == {3}
+
+
+def test_ami_monitor_destination_peer_can_correct_existing_fxo_line() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        await monitor.process_event(
+            {
+                "Event": "Newchannel",
+                "Uniqueid": "core-destination-3",
+                "Channel": "SIP/3034-00000001",
+            }
+        )
+        await monitor.process_event(
+            {
+                "Event": "CoreShowChannel",
+                "Uniqueid": "core-destination-3",
+                "CallerIDNum": "1135984273389",
+                "Destination": "3037",
+            }
+        )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert monitor.snapshot.active_calls[0].fxo_line == "4"
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {4}

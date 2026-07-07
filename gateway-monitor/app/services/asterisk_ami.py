@@ -194,8 +194,12 @@ class AsteriskAmiMonitor:
             event.get("DestExten"),
         )
         call.fxo_line = first_present(
+            extract_fxo_line_from_event(
+                event,
+                self._fxo_sip_mapping,
+                current_fxo_line=call.fxo_line,
+            ),
             call.fxo_line,
-            extract_fxo_line_from_event(event, self._fxo_sip_mapping),
         )
         self._active_calls[unique_id] = call
 
@@ -226,8 +230,12 @@ class AsteriskAmiMonitor:
             extract_extension(event.get("DestChannel")),
         )
         call.fxo_line = first_present(
+            extract_fxo_line_from_event(
+                event,
+                self._fxo_sip_mapping,
+                current_fxo_line=call.fxo_line,
+            ),
             call.fxo_line,
-            extract_fxo_line_from_event(event, self._fxo_sip_mapping),
         )
 
     def _finish_call(self, event: dict[str, str]) -> None:
@@ -345,6 +353,7 @@ def extract_fxo_line(
 def extract_fxo_line_from_event(
     event: dict[str, str],
     sip_mapping: dict[str, str] | None = None,
+    current_fxo_line: str | None = None,
 ) -> str | None:
     mapping = sip_mapping or {}
 
@@ -359,6 +368,9 @@ def extract_fxo_line_from_event(
         value = event.get(key)
         if value in mapping:
             return mapping[value]
+
+    if current_fxo_line:
+        return current_fxo_line
 
     return first_present(
         extract_fxo_line(event.get("Channel"), mapping),
