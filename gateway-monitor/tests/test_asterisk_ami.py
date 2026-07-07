@@ -39,6 +39,13 @@ def test_extract_fxo_line_from_event_fields() -> None:
 
     assert extract_fxo_line_from_event({"Exten": "3035"}, mapping) == "2"
     assert extract_fxo_line_from_event({"Destination": "3037"}, mapping) == "4"
+    assert (
+        extract_fxo_line_from_event(
+            {"Destination": "3036", "Channel": "SIP/3035-00000001"},
+            mapping,
+        )
+        == "3"
+    )
 
 
 async def _process_call_flow() -> AsteriskAmiMonitor:
@@ -162,3 +169,26 @@ def test_ami_monitor_maps_destination_peer_to_fxo_line() -> None:
 
     assert monitor.snapshot.active_calls[0].fxo_line == "2"
     assert monitor.active_fxo_lines([1, 2, 3, 4]) == {2}
+
+
+def test_ami_monitor_prefers_destination_peer_over_channel_peer() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        await monitor.process_event(
+            {
+                "Event": "CoreShowChannel",
+                "Uniqueid": "core-destination-2",
+                "CallerIDNum": "1135984273389",
+                "Destination": "3036",
+                "Channel": "SIP/3035-00000001",
+            }
+        )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert monitor.snapshot.active_calls[0].fxo_line == "3"
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {3}

@@ -347,12 +347,6 @@ def extract_fxo_line_from_event(
     sip_mapping: dict[str, str] | None = None,
 ) -> str | None:
     mapping = sip_mapping or {}
-    channel_line = first_present(
-        extract_fxo_line(event.get("Channel"), mapping),
-        extract_fxo_line(event.get("DestChannel"), mapping),
-    )
-    if channel_line:
-        return channel_line
 
     for key in (
         "Exten",
@@ -366,7 +360,10 @@ def extract_fxo_line_from_event(
         if value in mapping:
             return mapping[value]
 
-    return None
+    return first_present(
+        extract_fxo_line(event.get("Channel"), mapping),
+        extract_fxo_line(event.get("DestChannel"), mapping),
+    )
 
 
 def extract_extension(channel: str | None) -> str | None:
