@@ -26,6 +26,32 @@ const badgeClasses = {
   disabled: "text-bg-dark",
 };
 
+const eventLabels = {
+  state_change: "Mudanca",
+  congestion_start: "Congestionou",
+  congestion_end: "Liberou",
+};
+
+const eventClasses = {
+  state_change: "event-pill event-state",
+  congestion_start: "event-pill event-danger",
+  congestion_end: "event-pill event-success",
+};
+
+function updateHeaderClock() {
+  const clock = document.getElementById("header-clock");
+  if (!clock) {
+    return;
+  }
+
+  clock.textContent = new Date().toLocaleString("pt-BR");
+}
+
+function startHeaderClock() {
+  updateHeaderClock();
+  window.setInterval(updateHeaderClock, 1000);
+}
+
 function renderSnapshot(snapshot) {
   const counts = calculateCounts(snapshot);
   const occupancy = Math.round((counts.busy / TOTAL_LINES) * 100);
@@ -355,28 +381,61 @@ async function loadEvents() {
   }
 
   try {
-    const response = await fetch("/api/events?limit=20");
+    const response = await fetch("/api/events?limit=8");
     const events = await response.json();
     if (events.length === 0) {
-      table.innerHTML = '<tr><td colspan="6" class="text-secondary">Sem eventos gravados</td></tr>';
+      table.innerHTML = '<tr><td colspan="4" class="text-secondary">Sem eventos gravados</td></tr>';
       return;
     }
 
     table.innerHTML = events.map((event) => `
       <tr>
-        <td>${new Date(event.created_at).toLocaleString("pt-BR")}</td>
-        <td><span class="event-pill">${event.event_type}</span></td>
-        <td>${event.busy_lines}</td>
-        <td>${event.idle_lines}</td>
-        <td>${event.duration}s</td>
-        <td>${event.message}</td>
+        <td>${formatEventTime(event.created_at)}</td>
+        <td><span class="${eventClasses[event.event_type] || "event-pill"}">${eventLabels[event.event_type] || event.event_type}</span></td>
+        <td><span class="history-lines">${event.busy_lines} ocup. / ${event.idle_lines} livres</span></td>
+        <td class="history-message">${formatEventSummary(event)}</td>
       </tr>
     `).join("");
   } catch {
-    table.innerHTML = '<tr><td colspan="6" class="text-secondary">Historico indisponivel</td></tr>';
+    table.innerHTML = '<tr><td colspan="4" class="text-secondary">Historico indisponivel</td></tr>';
   }
 }
 
+function formatEventTime(value) {
+  return new Date(value).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function formatEventSummary(event) {
+  if (event.event_type === "congestion_start") {
+    return "Todas as linhas ocupadas";
+  }
+  if (event.event_type === "congestion_end") {
+    return `Congestionamento encerrado em ${formatDuration(event.duration)}`;
+  }
+  return simplifyLineChanges(event.message);
+}
+
+function simplifyLineChanges(message) {
+  if (!message) {
+    return "--";
+  }
+
+  return message
+    .replaceAll("idle -> busy", "ocupou")
+    .replaceAll("busy -> idle", "liberou")
+    .replaceAll("busy -> ringing", "chamando")
+    .replaceAll("ringing -> busy", "ocupou")
+    .split(";")
+    .map((item) => item.trim())
+    .slice(0, 3)
+    .join(" | ");
+}
+
+startHeaderClock();
 renderSnapshot(window.gatewayMonitorInitialSnapshot);
 renderAsteriskSnapshot(window.asteriskInitialSnapshot);
 connectGatewaySocket();

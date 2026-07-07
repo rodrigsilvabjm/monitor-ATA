@@ -19,7 +19,7 @@
             <div class="d-flex flex-wrap align-items-center gap-3 text-secondary small">
               <span>{{ status }}</span>
               <span>{{ database_status }}</span>
-              <span>{{ current_date }} {{ current_time }}</span>
+              <span id="header-clock">{{ current_date }} {{ current_time }}</span>
               <span>Versao {{ version }}</span>
             </div>
           </div>
@@ -91,13 +91,13 @@
               <p class="text-secondary mb-0">Pressao por linha no instante atual</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-              <a class="btn btn-sm btn-outline-secondary" href="/api/reports/pdf?period=24h">PDF 24h</a>
-              <a class="btn btn-sm btn-outline-secondary" href="/api/reports/pdf?period=7d">PDF 7d</a>
-              <a class="btn btn-sm btn-outline-secondary" href="/api/reports/pdf?period=30d">PDF 30d</a>
-              <a class="btn btn-sm btn-outline-secondary" href="/api/reports/excel?period=24h">Excel 24h</a>
-              <a class="btn btn-sm btn-outline-secondary" href="/api/reports/excel?period=7d">Excel 7d</a>
-              <a class="btn btn-sm btn-outline-secondary" href="/api/reports/excel?period=30d">Excel 30d</a>
-              <a class="btn btn-sm btn-outline-secondary" href="/metrics">Prometheus</a>
+              <a class="btn btn-sm report-btn report-pdf" href="/api/reports/pdf?period=24h">PDF 24h</a>
+              <a class="btn btn-sm report-btn report-pdf" href="/api/reports/pdf?period=7d">PDF 7d</a>
+              <a class="btn btn-sm report-btn report-pdf" href="/api/reports/pdf?period=30d">PDF 30d</a>
+              <a class="btn btn-sm report-btn report-excel" href="/api/reports/excel?period=24h">Excel 24h</a>
+              <a class="btn btn-sm report-btn report-excel" href="/api/reports/excel?period=7d">Excel 7d</a>
+              <a class="btn btn-sm report-btn report-excel" href="/api/reports/excel?period=30d">Excel 30d</a>
+              <a class="btn btn-sm report-btn report-metrics" href="/metrics">Prometheus</a>
             </div>
           </div>
           <div id="heatmap-grid" class="heatmap-grid">
@@ -137,7 +137,7 @@
             <div class="panel-heading">
               <div>
                 <h2 class="h5 mb-1">Linhas</h2>
-                <p class="text-secondary mb-0">8 canais monitorados</p>
+                <p class="text-secondary mb-0">{{ lines_snapshot.lines | length }} canais monitorados</p>
               </div>
               <span id="line-summary" class="badge text-bg-secondary">Aguardando</span>
             </div>
@@ -193,24 +193,22 @@
               <h2 class="h5 mb-1">Historico</h2>
               <p class="text-secondary mb-0">Mudancas de estado e congestionamentos</p>
             </div>
-            <span class="small text-secondary">Ultimos eventos</span>
+            <span class="small text-secondary">Ultimos 8 eventos</span>
           </div>
 
           <div class="table-responsive">
             <table class="table table-sm align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Data/Hora</th>
+                  <th>Hora</th>
                   <th>Evento</th>
-                  <th>Ocupadas</th>
-                  <th>Livres</th>
-                  <th>Duracao</th>
-                  <th>Mensagem</th>
+                  <th>Linhas</th>
+                  <th>Resumo</th>
                 </tr>
               </thead>
               <tbody id="events-table">
                 <tr>
-                  <td colspan="6" class="text-secondary">Carregando historico</td>
+                  <td colspan="4" class="text-secondary">Carregando historico</td>
                 </tr>
               </tbody>
             </table>

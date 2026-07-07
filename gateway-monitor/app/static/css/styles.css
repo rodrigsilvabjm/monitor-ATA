@@ -195,9 +195,80 @@ body {
   white-space: nowrap;
 }
 
+.event-state {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.event-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.event-danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.report-btn {
+  border: 0;
+  color: #ffffff;
+  font-weight: 600;
+  min-width: 78px;
+}
+
+.report-btn:hover,
+.report-btn:focus {
+  color: #ffffff;
+  filter: brightness(0.94);
+}
+
+.report-pdf {
+  background: #dc3545;
+}
+
+.report-excel {
+  background: #198754;
+}
+
+.report-metrics {
+  background: #495057;
+}
+
 .calls-panel tbody td,
 .history-panel tbody td {
   white-space: nowrap;
+}
+
+.history-panel {
+  padding-bottom: 0.75rem;
+}
+
+.history-panel .table-responsive {
+  max-height: 300px;
+  overflow: auto;
+}
+
+.history-panel table {
+  font-size: 0.875rem;
+}
+
+.history-panel th,
+.history-panel td {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+.history-message {
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-lines {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
 }
 
 .heatmap-grid {
