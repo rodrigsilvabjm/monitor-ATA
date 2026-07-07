@@ -157,9 +157,9 @@ class AsteriskAmiMonitor:
             self._finish_call(event)
         elif event_name == "coreshowchannel":
             self._upsert_call(event)
-            unique_id = get_unique_id(event)
-            if unique_id:
-                self._core_poll_seen_ids.add(unique_id)
+            call_key = get_call_key(event)
+            if call_key:
+                self._core_poll_seen_ids.add(call_key)
         elif event_name == "coreshowchannelscomplete":
             if self._core_poll_active:
                 self._remove_calls_missing_from_core_poll()
@@ -171,14 +171,20 @@ class AsteriskAmiMonitor:
         await self._broadcast()
 
     def _upsert_call(self, event: dict[str, str]) -> None:
-        unique_id = get_unique_id(event)
-        if not unique_id:
+        call_key = get_call_key(event)
+        if not call_key:
             return
 
         now = datetime.now(UTC)
-        call = self._active_calls.get(unique_id)
+        call = self._pop_existing_call(event, call_key)
         if not call:
-            call = ActiveCall(unique_id=unique_id, started_at=now)
+            call = ActiveCall(
+                unique_id=event.get("Uniqueid") or call_key,
+                linked_id=event.get("Linkedid"),
+                started_at=now,
+            )
+        else:
+            call.linked_id = first_present(call.linked_id, event.get("Linkedid"))
 
         call.source_number = first_present(
             call.source_number,
@@ -201,7 +207,7 @@ class AsteriskAmiMonitor:
             ),
             call.fxo_line,
         )
-        self._active_calls[unique_id] = call
+        self._active_calls[call_key] = call
 
     def _remove_calls_missing_from_core_poll(self) -> None:
         if not self._core_poll_seen_ids:
@@ -215,11 +221,14 @@ class AsteriskAmiMonitor:
         }
 
     def _mark_answered(self, event: dict[str, str]) -> None:
-        unique_id = get_unique_id(event)
-        if not unique_id or unique_id not in self._active_calls:
+        call_key = get_call_key(event)
+        if not call_key:
             return
 
-        call = self._active_calls[unique_id]
+        call = self._pop_existing_call(event, call_key)
+        if not call:
+            return
+
         call.status = "answered"
         call.answered_at = call.answered_at or datetime.now(UTC)
         call.answered_extension = first_present(
@@ -237,13 +246,14 @@ class AsteriskAmiMonitor:
             ),
             call.fxo_line,
         )
+        self._active_calls[call_key] = call
 
     def _finish_call(self, event: dict[str, str]) -> None:
-        unique_id = get_unique_id(event)
-        if not unique_id:
+        call_key = get_call_key(event)
+        if not call_key:
             return
 
-        call = self._active_calls.pop(unique_id, None)
+        call = self._pop_existing_call(event, call_key)
         duration = parse_duration(event) or (
             int((datetime.now(UTC) - call.started_at).total_seconds())
             if call
@@ -260,6 +270,17 @@ class AsteriskAmiMonitor:
             duration == 0 or "no answer" in disposition or "normal clearing" not in cause
         ):
             self._missed_calls += 1
+
+    def _pop_existing_call(
+        self,
+        event: dict[str, str],
+        call_key: str,
+    ) -> ActiveCall | None:
+        for key in get_possible_call_keys(event, call_key):
+            call = self._active_calls.pop(key, None)
+            if call:
+                return call
+        return None
 
     def _build_snapshot(self, connected: bool) -> AsteriskSnapshot:
         now = datetime.now(UTC)
@@ -322,9 +343,33 @@ def get_unique_id(event: dict[str, str]) -> str | None:
     return first_present(
         event.get("Uniqueid"),
         event.get("UniqueID"),
+        event.get("DestUniqueid"),
         event.get("Linkedid"),
+    )
+
+
+def get_call_key(event: dict[str, str]) -> str | None:
+    return first_present(
+        event.get("Linkedid"),
+        event.get("Uniqueid"),
+        event.get("UniqueID"),
         event.get("DestUniqueid"),
     )
+
+
+def get_possible_call_keys(event: dict[str, str], primary_key: str) -> list[str]:
+    keys = [
+        primary_key,
+        event.get("Linkedid"),
+        event.get("Uniqueid"),
+        event.get("UniqueID"),
+        event.get("DestUniqueid"),
+    ]
+    unique_keys: list[str] = []
+    for key in keys:
+        if key and key not in unique_keys:
+            unique_keys.append(key)
+    return unique_keys
 
 
 def first_present(*values: str | None) -> str | None:

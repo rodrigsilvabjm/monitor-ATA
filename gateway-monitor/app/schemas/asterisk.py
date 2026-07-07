@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class ActiveCall(BaseModel):
     unique_id: str
+    linked_id: str | None = None
     source_number: str | None = None
     destination_number: str | None = None
     answered_extension: str | None = None

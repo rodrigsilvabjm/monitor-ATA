@@ -221,3 +221,66 @@ def test_ami_monitor_destination_peer_can_correct_existing_fxo_line() -> None:
 
     assert monitor.snapshot.active_calls[0].fxo_line == "4"
     assert monitor.active_fxo_lines([1, 2, 3, 4]) == {4}
+
+
+def test_ami_monitor_merges_call_legs_by_linkedid() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        await monitor.process_event(
+            {
+                "Event": "CoreShowChannel",
+                "Uniqueid": "leg-1",
+                "Linkedid": "call-group-1",
+                "CallerIDNum": "2010",
+                "Destination": "08000400000",
+            }
+        )
+        await monitor.process_event(
+            {
+                "Event": "CoreShowChannel",
+                "Uniqueid": "leg-2",
+                "Linkedid": "call-group-1",
+                "CallerIDNum": "1135984273389",
+                "Destination": "3037",
+            }
+        )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert len(monitor.snapshot.active_calls) == 1
+    assert monitor.snapshot.active_calls[0].fxo_line == "4"
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {4}
+
+
+def test_ami_monitor_keeps_all_four_linked_fxo_lines() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        for line, sip_peer in enumerate(("3034", "3035", "3036", "3037"), start=1):
+            await monitor.process_event(
+                {
+                    "Event": "CoreShowChannel",
+                    "Uniqueid": f"leg-{line}-a",
+                    "Linkedid": f"call-group-{line}",
+                    "Destination": "08000400000",
+                }
+            )
+            await monitor.process_event(
+                {
+                    "Event": "CoreShowChannel",
+                    "Uniqueid": f"leg-{line}-b",
+                    "Linkedid": f"call-group-{line}",
+                    "Destination": sip_peer,
+                }
+            )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {1, 2, 3, 4}
