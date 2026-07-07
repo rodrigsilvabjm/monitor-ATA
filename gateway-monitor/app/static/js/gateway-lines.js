@@ -56,10 +56,6 @@ function renderSnapshot(snapshot) {
   const counts = calculateCounts(snapshot);
   const occupancy = Math.round((counts.busy / TOTAL_LINES) * 100);
 
-  document.getElementById("gateway-host").textContent = snapshot.gateway_host;
-  document.getElementById("gateway-state").textContent = snapshot.connected
-    ? "SNMP conectado"
-    : "SNMP indisponivel";
   document.getElementById("updated-at").textContent = new Date(
     snapshot.updated_at
   ).toLocaleString("pt-BR");
