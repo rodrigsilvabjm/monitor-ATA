@@ -75,6 +75,18 @@ def test_cdr_from_csv_line() -> None:
     assert record.billsec == 82
 
 
+def test_cdr_from_csv_line_rejects_malformed_numeric_fields() -> None:
+    record = cdr_from_csv_line(
+        '"","3035","2","from-pstn","""3035"" <3035>",'
+        '"SIP/3035-0000063a","","Queue","cobranca,c",'
+        '"2026-07-08 00:13:16","2026-07-08 00:13:16",'
+        '"2026-07-08 00:14:38",82,"from-fxo-gw","ANSWERED",'
+        '"DOCUMENTATION","1783469596.2321",""'
+    )
+
+    assert record is None
+
+
 def test_iter_file_lines_reverse(tmp_path) -> None:
     cdr_path = tmp_path / "Master.csv"
     cdr_path.write_text("linha 1\nlinha 2\nlinha 3\n", encoding="utf-8")

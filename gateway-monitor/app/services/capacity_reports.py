@@ -16,6 +16,8 @@ def capacity_analysis_to_dict(analysis: CapacityAnalysis) -> dict:
         "ended_at": analysis.ended_at.isoformat(),
         "line_count": analysis.line_count,
         "trunk_sips": analysis.trunk_sips,
+        "source_record_count": analysis.source_record_count,
+        "relevant_record_count": analysis.total_calls,
         "total_calls": analysis.total_calls,
         "inbound_calls": analysis.inbound_calls,
         "outbound_calls": analysis.outbound_calls,

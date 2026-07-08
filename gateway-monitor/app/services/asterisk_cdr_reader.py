@@ -177,6 +177,10 @@ def cdr_from_mapping(values: dict[str, Any]) -> CdrRecord | None:
     end = parse_datetime(values.get("end"))
     if not start or not end:
         return None
+    duration = parse_int_strict(values.get("duration"))
+    billsec = parse_int_strict(values.get("billsec"))
+    if duration is None or billsec is None:
+        return None
 
     return CdrRecord(
         src=str(values.get("src") or ""),
@@ -188,8 +192,8 @@ def cdr_from_mapping(values: dict[str, Any]) -> CdrRecord | None:
         start=start,
         answer=parse_datetime(values.get("answer")),
         end=end,
-        duration=parse_int(values.get("duration")),
-        billsec=parse_int(values.get("billsec")),
+        duration=duration,
+        billsec=billsec,
         disposition=str(values.get("disposition") or "").upper(),
         uniqueid=str(values.get("uniqueid") or ""),
         userfield=str(values.get("userfield") or ""),
@@ -222,6 +226,13 @@ def parse_int(value: Any) -> int:
         return max(int(value or 0), 0)
     except (TypeError, ValueError):
         return 0
+
+
+def parse_int_strict(value: Any) -> int | None:
+    try:
+        return max(int(value), 0)
+    except (TypeError, ValueError):
+        return None
 
 
 def iter_file_lines_reverse(path: Path) -> Iterator[str]:

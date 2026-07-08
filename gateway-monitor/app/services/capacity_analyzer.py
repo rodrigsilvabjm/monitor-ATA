@@ -22,6 +22,7 @@ class CapacityAnalysis:
     ended_at: datetime
     line_count: int
     trunk_sips: list[str]
+    source_record_count: int
     total_calls: int
     inbound_calls: int
     outbound_calls: int
@@ -84,6 +85,7 @@ def analyze_capacity(
         ended_at=ended_at,
         line_count=line_count,
         trunk_sips=trunk_sips,
+        source_record_count=len(records),
         total_calls=len(relevant_records),
         inbound_calls=sum(1 for record in relevant_records if classify_direction(record, trunk_sips) == "inbound"),
         outbound_calls=sum(1 for record in relevant_records if classify_direction(record, trunk_sips) == "outbound"),
