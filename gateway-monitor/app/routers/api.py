@@ -1,5 +1,7 @@
 from io import BytesIO
 
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi.responses import Response, StreamingResponse
@@ -14,6 +16,14 @@ from app.schemas.gateway import GatewayCreate, GatewayResponse
 from app.schemas.gateway_event import GatewayEventResponse
 from app.schemas.gateway_line import GatewayLinesSnapshot
 from app.schemas.status import StatusResponse
+from app.config import get_settings
+from app.services.asterisk_cdr_reader import AsteriskCdrReader
+from app.services.capacity_analyzer import analyze_capacity
+from app.services.capacity_reports import (
+    build_capacity_excel,
+    build_capacity_pdf,
+    capacity_analysis_to_dict,
+)
 from app.services.monitoring import asterisk_ami_monitor, gateway_line_monitor
 from app.services.reports import (
     build_events_excel,
@@ -56,6 +66,45 @@ def get_asterisk_snapshot() -> AsteriskSnapshot:
     return asterisk_ami_monitor.snapshot
 
 
+@router.get("/capacity/summary")
+def get_capacity_summary(days: int = 30) -> dict:
+    analysis = build_capacity_analysis(days)
+    return capacity_analysis_to_dict(analysis)
+
+
+@router.get("/capacity/pdf")
+def capacity_pdf_report(days: int = 30) -> StreamingResponse:
+    analysis = build_capacity_analysis(days)
+    content = build_capacity_pdf(analysis)
+    return StreamingResponse(
+        BytesIO(content),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=capacity-report-{safe_days(days)}d.pdf"
+            )
+        },
+    )
+
+
+@router.get("/capacity/excel")
+def capacity_excel_report(days: int = 30) -> StreamingResponse:
+    analysis = build_capacity_analysis(days)
+    content = build_capacity_excel(analysis)
+    return StreamingResponse(
+        BytesIO(content),
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=capacity-report-{safe_days(days)}d.xlsx"
+            )
+        },
+    )
+
+
 @router.get("/events", response_model=list[GatewayEventResponse])
 def get_gateway_events(
     limit: int = 100,
@@ -68,6 +117,24 @@ def get_gateway_events(
         .limit(safe_limit)
         .all()
     )
+
+
+def build_capacity_analysis(days: int = 30):
+    settings = get_settings()
+    ended_at = datetime.now()
+    started_at = ended_at - timedelta(days=safe_days(days))
+    records = AsteriskCdrReader(settings).read_records(started_at, ended_at)
+    return analyze_capacity(
+        records=records,
+        trunk_sips=settings.capacity_trunk_sip_list,
+        line_count=settings.capacity_line_count,
+        started_at=started_at,
+        ended_at=ended_at,
+    )
+
+
+def safe_days(days: int) -> int:
+    return min(max(days, 1), 365)
 
 
 @router.get("/reports/pdf")

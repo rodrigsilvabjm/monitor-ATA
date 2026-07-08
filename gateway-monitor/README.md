@@ -338,6 +338,48 @@ GET /api/asterisk
 WS  /ws/asterisk
 ```
 
+## Relatorio de Capacidade Telefonica
+
+O relatorio de capacidade usa CDRs do Asterisk e considera apenas os troncos
+SIP configurados em `CAPACITY_TRUNK_SIPS`. Para este ambiente, os troncos
+monitorados sao `3034`, `3035`, `3036` e `3037`, equivalentes as 4 linhas atuais.
+
+Configure no `.env`:
+
+```env
+ASTERISK_CDR_SOURCE=csv
+ASTERISK_CDR_CSV_PATH=/var/log/asterisk/cdr-csv/Master.csv
+ASTERISK_CDR_SQLITE_PATH=
+ASTERISK_CDR_MYSQL_HOST=127.0.0.1
+ASTERISK_CDR_MYSQL_PORT=3306
+ASTERISK_CDR_MYSQL_USER=
+ASTERISK_CDR_MYSQL_PASSWORD=
+ASTERISK_CDR_MYSQL_DATABASE=
+ASTERISK_CDR_TABLE=cdr
+CAPACITY_TRUNK_SIPS=3034,3035,3036,3037
+CAPACITY_LINE_COUNT=4
+```
+
+Fontes aceitas em `ASTERISK_CDR_SOURCE`: `csv`, `sqlite`, `mysql`.
+
+Pagina:
+
+```text
+GET /capacity
+```
+
+Endpoints:
+
+```text
+GET /api/capacity/summary?days=30
+GET /api/capacity/pdf?days=30
+GET /api/capacity/excel?days=30
+```
+
+O relatorio calcula volume por dia, chamadas recebidas e realizadas, status dos
+CDRs, Busy Hour, Erlangs, simultaneidade, periodos com todas as linhas ocupadas,
+ranking de troncos e recomendacao automatica de capacidade via Erlang B.
+
 ## Backup
 
 Criar backup do PostgreSQL:

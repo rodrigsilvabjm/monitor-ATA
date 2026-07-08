@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Relatório de Capacidade Telefônica</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    >
+    <link href="{{ url_for('static', path='/css/styles.css') }}" rel="stylesheet">
+  </head>
+  <body>
+    <main class="container-fluid dashboard-shell py-4">
+      <section class="dashboard-layout">
+        <header class="dashboard-header">
+          <div>
+            <h1 class="h3 mb-1">Relatório de Capacidade Telefônica</h1>
+            <div class="d-flex flex-wrap align-items-center gap-3 text-secondary small">
+              <span>{{ app_name }}</span>
+              <span>{{ line_count }} linhas atuais</span>
+              <span>SIPs {{ trunk_sips | join(", ") }}</span>
+              <span id="header-clock">{{ current_date }} {{ current_time }}</span>
+            </div>
+          </div>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <select id="capacity-days" class="form-select form-select-sm capacity-select">
+              <option value="1">24 horas</option>
+              <option value="7">7 dias</option>
+              <option value="30" selected>30 dias</option>
+              <option value="90">90 dias</option>
+            </select>
+            <a class="btn btn-sm btn-outline-secondary" href="/">Voltar</a>
+          </div>
+        </header>
+
+        <section id="capacity-recommendation" class="panel capacity-recommendation">
+          <div>
+            <span class="metric-label">Conclusão automática</span>
+            <h2 id="recommendation-status" class="h4 mb-1">Carregando</h2>
+            <p id="recommendation-message" class="mb-0 text-secondary">Analisando CDRs do Asterisk</p>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <a id="capacity-pdf" class="btn btn-sm report-btn report-pdf" href="/api/capacity/pdf?days=30">PDF</a>
+            <a id="capacity-excel" class="btn btn-sm report-btn report-excel" href="/api/capacity/excel?days=30">Excel</a>
+          </div>
+        </section>
+
+        <section class="summary-grid capacity-kpis">
+          <article class="metric-card">
+            <span class="metric-label">Chamadas</span>
+            <strong id="cap-total-calls" class="metric-value">--</strong>
+            <span id="cap-direction" class="metric-note">--</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Busy Hour</span>
+            <strong id="cap-busy-hour-calls" class="metric-value">--</strong>
+            <span id="cap-busy-hour-label" class="metric-note">--</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Tráfego Busy Hour</span>
+            <strong id="cap-erlangs" class="metric-value">--</strong>
+            <span class="metric-note">Erlangs</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Pico simultâneo</span>
+            <strong id="cap-peak" class="metric-value">--</strong>
+            <span class="metric-note">chamadas ao mesmo tempo</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Atendidas</span>
+            <strong id="cap-answered" class="metric-value">--</strong>
+            <span id="cap-unanswered" class="metric-note">--</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Duração média</span>
+            <strong id="cap-average-duration" class="metric-value">--</strong>
+            <span id="cap-total-duration" class="metric-note">--</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">Ocupação média</span>
+            <strong id="cap-occupancy" class="metric-value">--</strong>
+            <span class="metric-note">das linhas atuais</span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label">4 linhas ocupadas</span>
+            <strong id="cap-all-lines-count" class="metric-value">--</strong>
+            <span id="cap-all-lines-duration" class="metric-note">--</span>
+          </article>
+        </section>
+
+        <section class="dashboard-main">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2 class="h5 mb-1">Chamadas por hora</h2>
+                <p class="text-secondary mb-0">Volume do período selecionado</p>
+              </div>
+            </div>
+            <canvas id="capacity-hour-chart" width="720" height="260"></canvas>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2 class="h5 mb-1">Simultaneidade</h2>
+                <p class="text-secondary mb-0">Chamadas concorrentes nos troncos</p>
+              </div>
+            </div>
+            <canvas id="capacity-concurrency-chart" width="720" height="260"></canvas>
+          </article>
+        </section>
+
+        <section class="dashboard-main">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2 class="h5 mb-1">Troncos mais utilizados</h2>
+                <p class="text-secondary mb-0">Apenas SIPs 3034, 3035, 3036 e 3037</p>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Tronco</th>
+                    <th>Chamadas</th>
+                    <th>Tempo</th>
+                  </tr>
+                </thead>
+                <tbody id="capacity-trunks"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2 class="h5 mb-1">Ramais ou filas</h2>
+                <p class="text-secondary mb-0">Maiores volumes nos CDRs</p>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Ramal/Fila</th>
+                    <th>Chamadas</th>
+                    <th>Tempo</th>
+                  </tr>
+                </thead>
+                <tbody id="capacity-extensions"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="dashboard-main">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2 class="h5 mb-1">Chamadas por dia</h2>
+                <p class="text-secondary mb-0">Recebidas, realizadas e atendidas</p>
+              </div>
+            </div>
+            <div class="table-responsive capacity-table-wrap">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Dia</th>
+                    <th>Total</th>
+                    <th>Recebidas</th>
+                    <th>Realizadas</th>
+                    <th>Atendidas</th>
+                    <th>Não atendidas</th>
+                  </tr>
+                </thead>
+                <tbody id="capacity-days-table"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2 class="h5 mb-1">Erlang B</h2>
+                <p class="text-secondary mb-0">Estimativa de bloqueio por capacidade</p>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <tbody id="capacity-erlang"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', path='/js/capacity.js') }}"></script>
+  </body>
+</html>

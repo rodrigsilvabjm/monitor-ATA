@@ -60,6 +60,38 @@ class Settings(BaseSettings):
         default=None,
         alias="ASTERISK_FXO_SIP_MAP",
     )
+    asterisk_cdr_source: str = Field(default="csv", alias="ASTERISK_CDR_SOURCE")
+    asterisk_cdr_csv_path: Path = Field(
+        default=Path("/var/log/asterisk/cdr-csv/Master.csv"),
+        alias="ASTERISK_CDR_CSV_PATH",
+    )
+    asterisk_cdr_sqlite_path: Path | None = Field(
+        default=None,
+        alias="ASTERISK_CDR_SQLITE_PATH",
+    )
+    asterisk_cdr_mysql_host: str = Field(
+        default="127.0.0.1",
+        alias="ASTERISK_CDR_MYSQL_HOST",
+    )
+    asterisk_cdr_mysql_port: int = Field(default=3306, alias="ASTERISK_CDR_MYSQL_PORT")
+    asterisk_cdr_mysql_user: str | None = Field(
+        default=None,
+        alias="ASTERISK_CDR_MYSQL_USER",
+    )
+    asterisk_cdr_mysql_password: str | None = Field(
+        default=None,
+        alias="ASTERISK_CDR_MYSQL_PASSWORD",
+    )
+    asterisk_cdr_mysql_database: str | None = Field(
+        default=None,
+        alias="ASTERISK_CDR_MYSQL_DATABASE",
+    )
+    asterisk_cdr_table: str = Field(default="cdr", alias="ASTERISK_CDR_TABLE")
+    capacity_trunk_sips: str = Field(
+        default="3034,3035,3036,3037",
+        alias="CAPACITY_TRUNK_SIPS",
+    )
+    capacity_line_count: int = Field(default=4, alias="CAPACITY_LINE_COUNT")
 
     backup_enabled: bool = Field(default=False, alias="BACKUP_ENABLED")
     backup_interval_minutes: int = Field(default=60, alias="BACKUP_INTERVAL_MINUTES")
@@ -175,6 +207,15 @@ class Settings(BaseSettings):
             if sip_peer and fxo_line.isdigit():
                 mapping[sip_peer] = fxo_line
         return mapping
+
+    @property
+    def capacity_trunk_sip_list(self) -> list[str]:
+        trunks = [
+            value.strip()
+            for value in self.capacity_trunk_sips.split(",")
+            if value.strip()
+        ]
+        return trunks or ["3034", "3035", "3036", "3037"]
 
 
 @lru_cache

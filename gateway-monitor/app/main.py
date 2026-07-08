@@ -107,3 +107,24 @@ def tv_dashboard(request: Request) -> HTMLResponse:
             "asterisk_snapshot": asterisk_ami_monitor.snapshot,
         },
     )
+
+
+@app.get("/capacity", response_class=HTMLResponse)
+def capacity_dashboard(request: Request) -> HTMLResponse:
+    current_user = get_current_user(request)
+    if not current_user:
+        return RedirectResponse("/login", status_code=303)
+
+    now = datetime.now(ZoneInfo(settings.timezone))
+    return templates.TemplateResponse(
+        "capacity.html",
+        {
+            "request": request,
+            "app_name": settings.app_name,
+            "current_date": now.strftime("%d/%m/%Y"),
+            "current_time": now.strftime("%H:%M:%S"),
+            "version": settings.app_version,
+            "trunk_sips": settings.capacity_trunk_sip_list,
+            "line_count": settings.capacity_line_count,
+        },
+    )
