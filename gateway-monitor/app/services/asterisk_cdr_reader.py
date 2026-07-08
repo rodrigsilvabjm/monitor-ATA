@@ -1,11 +1,16 @@
 import csv
+import logging
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from app.config import Settings
+
+logger = logging.getLogger(__name__)
+
+REVERSE_READ_BLOCK_SIZE = 1024 * 1024
 
 MASTER_CSV_FIELDS = [
     "accountcode",
@@ -76,12 +81,19 @@ class AsteriskCdrReader:
             return []
 
         records: list[CdrRecord] = []
-        with path.open("r", encoding="utf-8", errors="ignore", newline="") as file:
-            reader = csv.reader(file)
-            for row in reader:
-                record = cdr_from_csv_row(row)
-                if record and started_at <= record.start <= ended_at:
+        try:
+            for line in iter_file_lines_reverse(path):
+                record = cdr_from_csv_line(line)
+                if not record:
+                    continue
+                if record.start < started_at:
+                    break
+                if record.start <= ended_at:
                     records.append(record)
+        except OSError as exc:
+            logger.warning("Unable to read Asterisk CDR CSV %s: %s", path, exc)
+            return []
+        records.reverse()
         return records
 
     def _read_sqlite(
@@ -152,6 +164,14 @@ def cdr_from_csv_row(row: list[str]) -> CdrRecord | None:
     return cdr_from_mapping(values)
 
 
+def cdr_from_csv_line(line: str) -> CdrRecord | None:
+    try:
+        row = next(csv.reader([line]))
+    except csv.Error:
+        return None
+    return cdr_from_csv_row(row)
+
+
 def cdr_from_mapping(values: dict[str, Any]) -> CdrRecord | None:
     start = parse_datetime(values.get("start"))
     end = parse_datetime(values.get("end"))
@@ -202,3 +222,33 @@ def parse_int(value: Any) -> int:
         return max(int(value or 0), 0)
     except (TypeError, ValueError):
         return 0
+
+
+def iter_file_lines_reverse(path: Path) -> Iterator[str]:
+    with path.open("rb") as file:
+        file.seek(0, 2)
+        position = file.tell()
+        pending = b""
+
+        while position > 0:
+            read_size = min(REVERSE_READ_BLOCK_SIZE, position)
+            position -= read_size
+            file.seek(position)
+            block = file.read(read_size) + pending
+            lines = block.splitlines()
+
+            if position > 0:
+                pending = lines[0] if lines else b""
+                lines = lines[1:]
+            else:
+                pending = b""
+
+            for line in reversed(lines):
+                decoded = line.decode("utf-8", errors="ignore").strip()
+                if decoded:
+                    yield decoded
+
+        if pending:
+            decoded = pending.decode("utf-8", errors="ignore").strip()
+            if decoded:
+                yield decoded
