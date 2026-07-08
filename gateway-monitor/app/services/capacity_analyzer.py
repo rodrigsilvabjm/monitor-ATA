@@ -68,7 +68,7 @@ def analyze_capacity(
         started_at,
         ended_at,
     )
-    concurrency = calculate_concurrency(intervals, line_count)
+    concurrency = calculate_concurrency(intervals, line_count, started_at, ended_at)
     erlang_recommendations = recommendations_by_target(busy_hour_erlangs)
     blocking_current = erlang_b(busy_hour_erlangs, line_count)
     recommendation = build_recommendation(
@@ -209,6 +209,8 @@ def seconds_overlapping_hour(record: CdrRecord, bucket: datetime) -> int:
 def calculate_concurrency(
     intervals: list[tuple[datetime, datetime, str | None]],
     line_count: int,
+    started_at: datetime,
+    ended_at: datetime,
 ) -> dict:
     events = []
     for start, end, _trunk in intervals:
@@ -223,11 +225,13 @@ def calculate_concurrency(
     longest_all_lines_busy_seconds = 0
     all_lines_busy_started_at: datetime | None = None
     previous_at: datetime | None = None
-    points: list[dict] = []
+    segments: list[tuple[datetime, datetime, int]] = []
 
     for event_time, delta in events:
         if previous_at and active >= line_count:
             all_lines_busy_seconds += max(int((event_time - previous_at).total_seconds()), 0)
+        if previous_at and event_time > previous_at:
+            segments.append((previous_at, event_time, active))
 
         was_all_busy = active >= line_count
         active += delta
@@ -245,7 +249,6 @@ def calculate_concurrency(
             )
             all_lines_busy_started_at = None
 
-        points.append({"time": event_time.isoformat(), "active": active})
         previous_at = event_time
 
     return {
@@ -253,8 +256,66 @@ def calculate_concurrency(
         "all_lines_busy_count": all_lines_busy_count,
         "all_lines_busy_seconds": all_lines_busy_seconds,
         "longest_all_lines_busy_seconds": longest_all_lines_busy_seconds,
-        "points": points[-240:],
+        "points": build_concurrency_chart_points(segments, started_at, ended_at),
     }
+
+
+def build_concurrency_chart_points(
+    segments: list[tuple[datetime, datetime, int]],
+    started_at: datetime,
+    ended_at: datetime,
+) -> list[dict]:
+    use_daily = (ended_at - started_at) > timedelta(days=2)
+    buckets = (
+        build_day_buckets(started_at, ended_at)
+        if use_daily
+        else build_hour_buckets(started_at, ended_at)
+    )
+    peaks: dict[datetime, int] = {bucket: 0 for bucket in buckets}
+
+    for segment_start, segment_end, active in segments:
+        if active <= 0:
+            continue
+        for bucket in iter_overlapping_buckets(segment_start, segment_end, use_daily):
+            if bucket in peaks:
+                peaks[bucket] = max(peaks[bucket], active)
+
+    return [
+        {
+            "time": bucket.isoformat(),
+            "label": bucket.strftime("%d/%m") if use_daily else bucket.strftime("%H:00"),
+            "active": active,
+            "bucket": "day" if use_daily else "hour",
+        }
+        for bucket, active in peaks.items()
+    ]
+
+
+def build_day_buckets(started_at: datetime, ended_at: datetime) -> list[datetime]:
+    current = started_at.replace(hour=0, minute=0, second=0, microsecond=0)
+    buckets = []
+    while current <= ended_at:
+        buckets.append(current)
+        current += timedelta(days=1)
+    return buckets
+
+
+def iter_overlapping_buckets(
+    started_at: datetime,
+    ended_at: datetime,
+    use_daily: bool,
+) -> list[datetime]:
+    step = timedelta(days=1) if use_daily else timedelta(hours=1)
+    current = (
+        started_at.replace(hour=0, minute=0, second=0, microsecond=0)
+        if use_daily
+        else started_at.replace(minute=0, second=0, microsecond=0)
+    )
+    buckets = []
+    while current < ended_at:
+        buckets.append(current)
+        current += step
+    return buckets
 
 
 def build_trunk_usage(records: list[CdrRecord], trunk_sips: list[str]) -> list[dict]:

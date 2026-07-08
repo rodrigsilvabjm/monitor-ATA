@@ -72,3 +72,40 @@ def test_analyze_capacity() -> None:
     assert analysis.all_lines_busy_count == 1
     assert analysis.all_lines_busy_seconds == 300
     assert analysis.trunk_usage[0]["trunk"] == "3035"
+
+
+def test_analyze_capacity_uses_daily_concurrency_points_for_long_periods() -> None:
+    started_at = datetime(2026, 7, 1, 0, 0, 0)
+    ended_at = datetime(2026, 7, 8, 23, 59, 59)
+    records = [
+        _cdr(
+            "2010",
+            "0800",
+            "SIP/2010-1",
+            "SIP/3034-1",
+            datetime(2026, 7, 7, 9, 0, 0),
+            datetime(2026, 7, 7, 9, 30, 0),
+        ),
+        _cdr(
+            "2011",
+            "0800",
+            "SIP/2011-1",
+            "SIP/3035-1",
+            datetime(2026, 7, 7, 9, 10, 0),
+            datetime(2026, 7, 7, 9, 40, 0),
+        ),
+    ]
+
+    analysis = analyze_capacity(
+        records=records,
+        trunk_sips=["3034", "3035", "3036", "3037"],
+        line_count=4,
+        started_at=started_at,
+        ended_at=ended_at,
+    )
+
+    assert analysis.concurrency_points[0]["bucket"] == "day"
+    assert any(
+        point["label"] == "07/07" and point["active"] == 2
+        for point in analysis.concurrency_points
+    )

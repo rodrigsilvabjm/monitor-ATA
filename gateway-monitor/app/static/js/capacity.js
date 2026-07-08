@@ -16,6 +16,7 @@ async function loadCapacity() {
 }
 
 function renderCapacity(data) {
+  const selectedDays = Number(document.getElementById("capacity-days").value);
   document.getElementById("recommendation-status").textContent = data.recommendation.status;
   document.getElementById("recommendation-message").textContent = data.recommendation.message;
   document.getElementById("capacity-recommendation").dataset.status = data.recommendation.status;
@@ -53,8 +54,25 @@ function renderCapacity(data) {
     row.unanswered,
   ]);
   renderErlang(data);
-  drawBarChart("capacity-hour-chart", data.calls_by_hour, "hour", "calls");
-  drawLineChart("capacity-concurrency-chart", data.concurrency_points, "time", "active");
+
+  const volumeRows = selectedDays <= 1
+    ? data.calls_by_hour.map((row) => ({ label: row.hour, value: row.calls }))
+    : data.calls_by_day.map((row) => ({ label: row.day.slice(0, 5), value: row.total }));
+  document.getElementById("capacity-volume-title").textContent = selectedDays <= 1
+    ? "Chamadas por hora"
+    : "Chamadas por dia";
+  document.getElementById("capacity-volume-subtitle").textContent = selectedDays <= 1
+    ? "Total de chamadas em cada hora do período"
+    : "Total de chamadas em cada dia do período";
+  document.getElementById("capacity-concurrency-subtitle").textContent = selectedDays <= 2
+    ? "Pico de chamadas ao mesmo tempo em cada hora"
+    : "Pico de chamadas ao mesmo tempo em cada dia";
+
+  drawBarChart("capacity-hour-chart", volumeRows);
+  drawLineChart(
+    "capacity-concurrency-chart",
+    data.concurrency_points.map((row) => ({ label: row.label, value: row.active }))
+  );
 }
 
 function renderRows(tableId, rows, mapper) {
@@ -89,82 +107,145 @@ function renderErlang(data) {
   `;
 }
 
-function drawBarChart(canvasId, rows, labelKey, valueKey) {
+function drawBarChart(canvasId, rows) {
   const canvas = document.getElementById(canvasId);
-  const ctx = canvas.getContext("2d");
-  const width = canvas.width;
-  const height = canvas.height;
-  const padding = 32;
-  const chartWidth = width - padding * 2;
-  const chartHeight = height - padding * 2;
+  const { ctx, width, height } = prepareCanvas(canvas);
+  const padding = { top: 28, right: 16, bottom: 34, left: 42 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
   ctx.clearRect(0, 0, width, height);
-  drawChartGrid(ctx, padding, chartWidth, chartHeight);
 
   if (!rows.length) {
+    drawChartGrid(ctx, padding, chartWidth, chartHeight, 1);
     drawEmpty(ctx, width, height);
     return;
   }
 
-  const maxValue = Math.max(...rows.map((row) => row[valueKey]), 1);
+  const maxValue = Math.max(...rows.map((row) => row.value), 1);
+  drawChartGrid(ctx, padding, chartWidth, chartHeight, maxValue);
   const barWidth = chartWidth / rows.length;
   rows.forEach((row, index) => {
-    const value = row[valueKey];
+    const value = row.value;
     const barHeight = (value / maxValue) * chartHeight;
+    const x = padding.left + index * barWidth + 2;
+    const y = padding.top + chartHeight - barHeight;
+    const width = Math.max(barWidth - 4, 2);
     ctx.fillStyle = "#0d6efd";
-    ctx.fillRect(
-      padding + index * barWidth + 2,
-      padding + chartHeight - barHeight,
-      Math.max(barWidth - 4, 2),
-      barHeight
-    );
+    ctx.fillRect(x, y, width, barHeight);
+
+    if (barWidth >= 18 || value === maxValue) {
+      ctx.fillStyle = "#111827";
+      ctx.font = "12px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(String(value), x + width / 2, Math.max(y - 6, 12));
+    }
   });
 
-  ctx.fillStyle = "#6c757d";
-  ctx.font = "11px system-ui, sans-serif";
-  rows.filter((_, index) => index % Math.ceil(rows.length / 8 || 1) === 0).forEach((row, index) => {
-    ctx.fillText(row[labelKey], padding + index * (chartWidth / 8), height - 8);
-  });
+  drawXAxisLabels(ctx, rows, padding, chartWidth, height, "bar");
 }
 
-function drawLineChart(canvasId, rows, labelKey, valueKey) {
+function drawLineChart(canvasId, rows) {
   const canvas = document.getElementById(canvasId);
-  const ctx = canvas.getContext("2d");
-  const width = canvas.width;
-  const height = canvas.height;
-  const padding = 32;
-  const chartWidth = width - padding * 2;
-  const chartHeight = height - padding * 2;
+  const { ctx, width, height } = prepareCanvas(canvas);
+  const padding = { top: 28, right: 18, bottom: 34, left: 42 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
   ctx.clearRect(0, 0, width, height);
-  drawChartGrid(ctx, padding, chartWidth, chartHeight);
 
-  if (rows.length < 2) {
+  if (!rows.length) {
+    drawChartGrid(ctx, padding, chartWidth, chartHeight, 1);
     drawEmpty(ctx, width, height);
     return;
   }
 
-  const maxValue = Math.max(...rows.map((row) => row[valueKey]), 1);
-  ctx.beginPath();
-  rows.forEach((row, index) => {
-    const x = padding + (index / (rows.length - 1)) * chartWidth;
-    const y = padding + chartHeight - (row[valueKey] / maxValue) * chartHeight;
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "#dc3545";
-  ctx.stroke();
-}
-
-function drawChartGrid(ctx, padding, chartWidth, chartHeight) {
-  ctx.strokeStyle = "#e9eef5";
-  ctx.lineWidth = 1;
-  for (let index = 0; index <= 4; index += 1) {
-    const y = padding + (chartHeight / 4) * index;
+  const maxValue = Math.max(...rows.map((row) => row.value), 1);
+  drawChartGrid(ctx, padding, chartWidth, chartHeight, maxValue);
+  if (rows.length === 1) {
+    drawPoint(ctx, padding.left + chartWidth / 2, padding.top + chartHeight - (rows[0].value / maxValue) * chartHeight);
+  } else {
     ctx.beginPath();
-    ctx.moveTo(padding, y);
-    ctx.lineTo(padding + chartWidth, y);
+    rows.forEach((row, index) => {
+      const x = padding.left + (index / (rows.length - 1)) * chartWidth;
+      const y = padding.top + chartHeight - (row.value / maxValue) * chartHeight;
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#dc3545";
     ctx.stroke();
   }
+
+  rows.forEach((row, index) => {
+    const x = rows.length === 1
+      ? padding.left + chartWidth / 2
+      : padding.left + (index / (rows.length - 1)) * chartWidth;
+    const y = padding.top + chartHeight - (row.value / maxValue) * chartHeight;
+    if (row.value > 0) {
+      drawPoint(ctx, x, y);
+      if (rows.length <= 31 || row.value === maxValue) {
+        ctx.fillStyle = "#111827";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(String(row.value), x, Math.max(y - 8, 12));
+      }
+    }
+  });
+  drawXAxisLabels(ctx, rows, padding, chartWidth, height, "line");
+}
+
+function prepareCanvas(canvas) {
+  const parentWidth = Math.max(canvas.parentElement.clientWidth - 8, 320);
+  const cssHeight = 260;
+  const ratio = window.devicePixelRatio || 1;
+  canvas.style.width = "100%";
+  canvas.style.height = `${cssHeight}px`;
+  canvas.width = Math.floor(parentWidth * ratio);
+  canvas.height = Math.floor(cssHeight * ratio);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  return { ctx, width: parentWidth, height: cssHeight };
+}
+
+function drawPoint(ctx, x, y) {
+  ctx.beginPath();
+  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.fillStyle = "#dc3545";
+  ctx.fill();
+}
+
+function drawChartGrid(ctx, padding, chartWidth, chartHeight, maxValue) {
+  ctx.strokeStyle = "#e9eef5";
+  ctx.lineWidth = 1;
+  ctx.fillStyle = "#6c757d";
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.textAlign = "right";
+  for (let index = 0; index <= 4; index += 1) {
+    const y = padding.top + (chartHeight / 4) * index;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(padding.left + chartWidth, y);
+    ctx.stroke();
+    const value = Math.round(maxValue - (maxValue / 4) * index);
+    ctx.fillText(String(value), padding.left - 8, y + 4);
+  }
+}
+
+function drawXAxisLabels(ctx, rows, padding, chartWidth, height, chartType) {
+  const labelStep = Math.max(Math.ceil(rows.length / 8), 1);
+  const barWidth = chartWidth / Math.max(rows.length, 1);
+  ctx.fillStyle = "#6c757d";
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  rows.forEach((row, index) => {
+    if (index % labelStep !== 0 && index !== rows.length - 1) return;
+    const x = chartType === "bar"
+      ? padding.left + index * barWidth + barWidth / 2
+      : rows.length === 1
+        ? padding.left + chartWidth / 2
+        : padding.left + (index / (rows.length - 1)) * chartWidth;
+    ctx.fillText(row.label, x, height - 10);
+  });
+  ctx.textAlign = "start";
 }
 
 function drawEmpty(ctx, width, height) {

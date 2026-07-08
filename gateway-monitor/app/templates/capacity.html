@@ -138,21 +138,23 @@
           <article class="panel">
             <div class="panel-heading">
               <div>
-                <h2 class="h5 mb-1">Chamadas por hora</h2>
-                <p class="text-secondary mb-0">Volume do período selecionado</p>
+                <h2 id="capacity-volume-title" class="h5 mb-1">Chamadas por hora</h2>
+                <p id="capacity-volume-subtitle" class="text-secondary mb-0">Total de chamadas em cada hora</p>
               </div>
             </div>
-            <canvas id="capacity-hour-chart" width="720" height="260"></canvas>
+            <canvas id="capacity-hour-chart" class="capacity-chart" width="720" height="260"></canvas>
           </article>
 
           <article class="panel">
             <div class="panel-heading">
               <div>
                 <h2 class="h5 mb-1">Simultaneidade</h2>
-                <p class="text-secondary mb-0">Chamadas concorrentes nos troncos</p>
+                <p id="capacity-concurrency-subtitle" class="text-secondary mb-0">
+                  Pico de chamadas ao mesmo tempo em cada hora
+                </p>
               </div>
             </div>
-            <canvas id="capacity-concurrency-chart" width="720" height="260"></canvas>
+            <canvas id="capacity-concurrency-chart" class="capacity-chart" width="720" height="260"></canvas>
           </article>
         </section>
 
