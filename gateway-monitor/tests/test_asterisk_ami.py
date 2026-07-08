@@ -313,7 +313,7 @@ def test_ami_monitor_keeps_all_four_linked_fxo_lines() -> None:
     assert monitor.active_fxo_lines([1, 2, 3, 4]) == {1, 2, 3, 4}
 
 
-def test_ami_monitor_infers_missing_line_from_unassigned_external_call() -> None:
+def test_ami_monitor_does_not_infer_line_from_unassigned_external_call() -> None:
     async def scenario() -> AsteriskAmiMonitor:
         settings = get_settings().model_copy(
             update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
@@ -339,7 +339,7 @@ def test_ami_monitor_infers_missing_line_from_unassigned_external_call() -> None
 
     monitor = asyncio.run(scenario())
 
-    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {1, 2, 3, 4}
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {1, 2, 4}
 
 
 def test_ami_monitor_fills_extension_from_channel_when_numbers_are_missing() -> None:
