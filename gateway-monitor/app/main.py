@@ -72,7 +72,7 @@ def home(request: Request) -> HTMLResponse:
             "status": "Servidor Online",
             "database_status": "Banco conectado"
             if database_connected
-            else "Banco indisponivel",
+            else "Banco indisponível",
             "current_date": now.strftime("%d/%m/%Y"),
             "current_time": now.strftime("%H:%M:%S"),
             "version": settings.app_version,
@@ -97,7 +97,7 @@ def tv_dashboard(request: Request) -> HTMLResponse:
             "status": "Servidor Online",
             "database_status": "Banco conectado"
             if database_connected
-            else "Banco indisponivel",
+            else "Banco indisponível",
             "current_date": now.strftime("%d/%m/%Y"),
             "current_time": now.strftime("%H:%M:%S"),
             "version": settings.app_version,

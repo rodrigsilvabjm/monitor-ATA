@@ -16,11 +16,11 @@ from app.models.gateway_event import GatewayEvent
 LINE_TO_SIP = {1: "3034", 2: "3035", 3: "3036", 4: "3037"}
 LINE_CHANGE_PATTERN = re.compile(r"Linha\s+(\d+):\s+(\w+)\s+->\s+(\w+)")
 PERIODS = {
-    "24h": ("Ultimas 24 horas", timedelta(hours=24), "hour"),
-    "7d": ("Ultimos 7 dias", timedelta(days=7), "day"),
-    "1w": ("Ultima semana", timedelta(days=7), "day"),
-    "30d": ("Ultimos 30 dias", timedelta(days=30), "day"),
-    "1m": ("Ultimo mes", timedelta(days=30), "day"),
+    "24h": ("Últimas 24 horas", timedelta(hours=24), "hour"),
+    "7d": ("Últimos 7 dias", timedelta(days=7), "day"),
+    "1w": ("Última semana", timedelta(days=7), "day"),
+    "30d": ("Últimos 30 dias", timedelta(days=30), "day"),
+    "1m": ("Último mês", timedelta(days=30), "day"),
 }
 
 
@@ -295,7 +295,7 @@ def draw_pdf_header(
     pdf.rect(0, height - 92, width, 92, fill=True, stroke=False)
     pdf.setFillColor(colors.white)
     pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(40, height - 42, "Gateway Monitor - Relatorio de Utilizacao")
+    pdf.drawString(40, height - 42, "Gateway Monitor - Relatório de Utilização")
     pdf.setFont("Helvetica", 10)
     pdf.drawString(
         40,
@@ -359,7 +359,7 @@ def draw_pdf_timeline(
     y = height - 365
     pdf.setFillColor(colors.HexColor("#111827"))
     pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(x, y, "Grafico de utilizacao")
+    pdf.drawString(x, y, "Gráfico de utilização")
     y -= 18
     chart_width = 500
     chart_height = 90
@@ -397,7 +397,7 @@ def draw_pdf_congestion(
     pdf.drawString(40, y, "Resumo de congestionamento")
     y -= 18
     text = (
-        f"No periodo, todas as linhas ficaram ocupadas "
+        f"No período, todas as linhas ficaram ocupadas "
         f"{summary.congestion_count} vez(es), por "
         f"{format_duration(summary.congestion_seconds)} no total."
     )
@@ -412,7 +412,7 @@ def draw_pdf_event_history(
 ) -> None:
     y = height - 48
     pdf.setFont("Helvetica-Bold", 14)
-    pdf.drawString(40, y, "Historico detalhado")
+    pdf.drawString(40, y, "Histórico detalhado")
     y -= 28
     pdf.setFont("Helvetica", 8)
     for event in events:
@@ -423,7 +423,7 @@ def draw_pdf_event_history(
         line = (
             f"{event.created_at:%d/%m/%Y %H:%M:%S} | {event.event_type} | "
             f"Ocupadas: {event.busy_lines} | Livres: {event.idle_lines} | "
-            f"Duracao: {format_duration(event.duration)}"
+            f"Duração: {format_duration(event.duration)}"
         )
         pdf.drawString(40, y, line[:120])
         y -= 11
@@ -432,7 +432,7 @@ def draw_pdf_event_history(
 
 
 def write_summary_sheet(sheet, summary: ReportSummary) -> None:
-    sheet["A1"] = "Gateway Monitor - Relatorio de Utilizacao"
+    sheet["A1"] = "Gateway Monitor - Relatório de Utilização"
     sheet["A1"].font = Font(size=16, bold=True)
     sheet["A2"] = summary.period_label
     sheet["A3"] = (
@@ -450,7 +450,7 @@ def write_summary_sheet(sheet, summary: ReportSummary) -> None:
         ]
     )
     sheet.append([])
-    sheet.append(["Linha", "SIP", "Tempo ocupada", "Minutos ocupada", "Ativacoes"])
+    sheet.append(["Linha", "SIP", "Tempo ocupada", "Minutos ocupada", "Ativações"])
     for item in sorted(summary.line_usage, key=lambda value: value.line):
         sheet.append(
             [
@@ -467,15 +467,15 @@ def write_summary_sheet(sheet, summary: ReportSummary) -> None:
 
 
 def write_timeline_sheet(workbook: Workbook, summary: ReportSummary) -> None:
-    sheet = workbook.create_sheet("Grafico")
-    sheet.append(["Janela", "Media de linhas ocupadas", "Pico de linhas ocupadas"])
+    sheet = workbook.create_sheet("Gráfico")
+    sheet.append(["Janela", "Média de linhas ocupadas", "Pico de linhas ocupadas"])
     for point in summary.timeline:
         sheet.append([point.label, point.average_busy_lines, point.peak_busy_lines])
     format_sheet_header(sheet, 1)
     autosize_columns(sheet)
 
     chart = LineChart()
-    chart.title = "Utilizacao por periodo"
+    chart.title = "Utilização por período"
     chart.y_axis.title = "Linhas ocupadas"
     chart.x_axis.title = "Janela"
     data = Reference(
@@ -527,9 +527,9 @@ def write_timeline_sheet(workbook: Workbook, summary: ReportSummary) -> None:
 
 
 def write_history_sheet(workbook: Workbook, events: list[GatewayEvent]) -> None:
-    sheet = workbook.create_sheet("Historico bruto")
+    sheet = workbook.create_sheet("Histórico bruto")
     sheet.append(
-        ["ID", "Criado em", "Evento", "Ocupadas", "Livres", "Duracao", "Mensagem"]
+        ["ID", "Criado em", "Evento", "Ocupadas", "Livres", "Duração", "Mensagem"]
     )
     for event in sorted(events, key=lambda item: item.created_at, reverse=True):
         sheet.append(

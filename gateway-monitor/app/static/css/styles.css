@@ -251,14 +251,37 @@ body {
   background: #f0fff6;
 }
 
-.capacity-recommendation[data-status="Capacidade em Atencao"] {
+.capacity-recommendation[data-status="Capacidade em Atenção"] {
   border-color: rgba(255, 193, 7, 0.65);
   background: #fff9e8;
 }
 
-.capacity-recommendation[data-status="Capacidade Critica"] {
+.capacity-recommendation[data-status="Capacidade Crítica"] {
   border-color: rgba(220, 53, 69, 0.5);
   background: #fff5f6;
+}
+
+.capacity-help summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.capacity-help-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.capacity-help-grid h2 {
+  color: var(--text-main);
+}
+
+.capacity-help-grid p:last-child {
+  margin-bottom: 0;
 }
 
 .capacity-kpis .metric-value {
@@ -343,6 +366,10 @@ body {
 @media (max-width: 1100px) {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .capacity-help-grid {
+    grid-template-columns: 1fr;
   }
 
   .dashboard-main {

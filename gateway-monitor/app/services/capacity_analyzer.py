@@ -332,19 +332,19 @@ def build_recommendation(
     if blocking_probability <= 0.02 and all_lines_busy_seconds == 0:
         return CapacityRecommendation(
             status="Capacidade Adequada",
-            message=f"Recomendacao de manter as {line_count} linhas.",
+            message=f"Recomendação de manter as {line_count} linhas.",
             recommended_lines=line_count,
         )
     if blocking_probability <= 0.05 and all_lines_busy_seconds < 300:
         return CapacityRecommendation(
-            status="Capacidade em Atencao",
+            status="Capacidade em Atenção",
             message=(
-                f"Manter {line_count} linhas por enquanto, mas acompanhar a Busy Hour."
+                f"Manter {line_count} linhas por enquanto, mas acompanhar a hora de maior movimento."
             ),
             recommended_lines=max(line_count, recommended_lines),
         )
     return CapacityRecommendation(
-        status="Capacidade Critica",
-        message=f"Recomendacao de ampliar para {recommended_lines} linhas.",
+        status="Capacidade Crítica",
+        message=f"Recomendação de ampliar para {recommended_lines} linhas.",
         recommended_lines=recommended_lines,
     )

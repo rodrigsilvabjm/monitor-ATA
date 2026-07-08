@@ -46,6 +46,51 @@
           </div>
         </section>
 
+        <section class="panel capacity-help">
+          <details>
+            <summary>Como interpretar este relatório</summary>
+            <div class="capacity-help-grid">
+              <div>
+                <h2 class="h6">Indicadores principais</h2>
+                <p>
+                  Os dados são lidos dos CDRs do Asterisk e filtrados apenas pelos troncos
+                  SIP 3034, 3035, 3036 e 3037. O total separa chamadas recebidas e realizadas,
+                  enquanto atendidas e não atendidas usam o status gravado no CDR.
+                </p>
+                <p>
+                  Duração média é o tempo total em ligação dividido pela quantidade de chamadas
+                  atendidas. Ocupação média compara o tráfego medido com as 4 linhas atuais.
+                </p>
+              </div>
+              <div>
+                <h2 class="h6">Gráficos</h2>
+                <p>
+                  Chamadas por hora mostra o volume em cada faixa horária do período selecionado.
+                  Simultaneidade mostra quantas chamadas estavam usando os troncos ao mesmo tempo,
+                  calculando início e fim de cada chamada.
+                </p>
+                <p>
+                  A hora de maior movimento é a faixa de 60 minutos com mais chamadas. O tráfego
+                  dessa hora é calculado em Erlangs: segundos em chamada na hora de pico divididos
+                  por 3600.
+                </p>
+              </div>
+              <div>
+                <h2 class="h6">Capacidade</h2>
+                <p>
+                  Pico simultâneo indica o maior número de chamadas ao mesmo tempo. "4 linhas
+                  ocupadas" conta quantas vezes as 4 linhas ficaram ocupadas e por quanto tempo
+                  isso durou.
+                </p>
+                <p>
+                  Erlang B estima a chance de uma chamada encontrar todas as linhas ocupadas. A
+                  recomendação compara o bloqueio estimado com limites de 5%, 2%, 1% e 0,5%.
+                </p>
+              </div>
+            </div>
+          </details>
+        </section>
+
         <section class="summary-grid capacity-kpis">
           <article class="metric-card">
             <span class="metric-label">Chamadas</span>
@@ -53,12 +98,12 @@
             <span id="cap-direction" class="metric-note">--</span>
           </article>
           <article class="metric-card">
-            <span class="metric-label">Busy Hour</span>
+            <span class="metric-label">Hora de maior movimento</span>
             <strong id="cap-busy-hour-calls" class="metric-value">--</strong>
             <span id="cap-busy-hour-label" class="metric-note">--</span>
           </article>
           <article class="metric-card">
-            <span class="metric-label">Tráfego Busy Hour</span>
+            <span class="metric-label">Tráfego na hora de pico</span>
             <strong id="cap-erlangs" class="metric-value">--</strong>
             <span class="metric-note">Erlangs</span>
           </article>
@@ -183,7 +228,7 @@
           <article class="panel">
             <div class="panel-heading">
               <div>
-                <h2 class="h5 mb-1">Erlang B</h2>
+                <h2 class="h5 mb-1">Modelo Erlang B</h2>
                 <p class="text-secondary mb-0">Estimativa de bloqueio por capacidade</p>
               </div>
             </div>

@@ -73,7 +73,7 @@ def build_capacity_pdf(analysis: CapacityAnalysis) -> bytes:
     pdf.rect(0, height - 92, width, 92, fill=True, stroke=False)
     pdf.setFillColor(colors.white)
     pdf.setFont("Helvetica-Bold", 17)
-    pdf.drawString(40, height - 42, "Relatorio de Capacidade Telefonica")
+    pdf.drawString(40, height - 42, "Relatório de Capacidade Telefônica")
     pdf.setFont("Helvetica", 10)
     pdf.drawString(
         40,
@@ -87,9 +87,9 @@ def build_capacity_pdf(analysis: CapacityAnalysis) -> bytes:
         y,
         [
             ("Chamadas", str(analysis.total_calls)),
-            ("Busy Hour", f"{analysis.busy_hour_calls} chamadas"),
-            ("Erlangs BH", f"{analysis.busy_hour_erlangs:.3f}"),
-            ("Pico simultaneo", str(analysis.peak_concurrent_calls)),
+            ("Hora de pico", f"{analysis.busy_hour_calls} chamadas"),
+            ("Erlangs hora pico", f"{analysis.busy_hour_erlangs:.3f}"),
+            ("Pico simultâneo", str(analysis.peak_concurrent_calls)),
         ],
     )
     y -= 96
@@ -109,13 +109,13 @@ def build_capacity_pdf(analysis: CapacityAnalysis) -> bytes:
         ("Recebidas", analysis.inbound_calls),
         ("Realizadas", analysis.outbound_calls),
         ("Atendidas", analysis.answered_calls),
-        ("Nao atendidas", analysis.unanswered_calls),
-        ("Duracao media", format_duration(analysis.average_duration_seconds)),
-        ("Tempo total em ligacao", format_duration(analysis.total_billsec)),
-        ("Ocupacao media", f"{analysis.average_occupancy_percent:.2f}%"),
+        ("Não atendidas", analysis.unanswered_calls),
+        ("Duração média", format_duration(analysis.average_duration_seconds)),
+        ("Tempo total em ligação", format_duration(analysis.total_billsec)),
+        ("Ocupação média", f"{analysis.average_occupancy_percent:.2f}%"),
         ("4 linhas ocupadas", f"{analysis.all_lines_busy_count} vezes"),
         ("Tempo com 4 ocupadas", format_duration(analysis.all_lines_busy_seconds)),
-        ("Maior periodo 4 ocupadas", format_duration(analysis.longest_all_lines_busy_seconds)),
+        ("Maior intervalo 4 ocupadas", format_duration(analysis.longest_all_lines_busy_seconds)),
     ]
     for label, value in indicators:
         pdf.drawString(48, y, f"{label}: {value}")
@@ -133,7 +133,7 @@ def build_capacity_pdf(analysis: CapacityAnalysis) -> bytes:
     )
     y -= 13
     for target, lines in analysis.erlang_recommended_lines.items():
-        pdf.drawString(48, y, f"Para bloqueio maximo {target}: {lines} linhas")
+        pdf.drawString(48, y, f"Para bloqueio máximo {target}: {lines} linhas")
         y -= 13
 
     y -= 10
@@ -225,35 +225,35 @@ def build_capacity_excel(analysis: CapacityAnalysis) -> bytes:
 
 def write_summary(sheet, analysis: CapacityAnalysis) -> None:
     payload = capacity_analysis_to_dict(analysis)
-    sheet["A1"] = "Relatorio de Capacidade Telefonica"
+    sheet["A1"] = "Relatório de Capacidade Telefônica"
     sheet["A1"].font = Font(size=16, bold=True)
     rows = [
-        ("Periodo inicial", analysis.started_at.strftime("%d/%m/%Y %H:%M")),
-        ("Periodo final", analysis.ended_at.strftime("%d/%m/%Y %H:%M")),
+        ("Período inicial", analysis.started_at.strftime("%d/%m/%Y %H:%M")),
+        ("Período final", analysis.ended_at.strftime("%d/%m/%Y %H:%M")),
         ("Linhas atuais", analysis.line_count),
         ("Troncos analisados", ", ".join(analysis.trunk_sips)),
         ("Total de chamadas", analysis.total_calls),
         ("Recebidas", analysis.inbound_calls),
         ("Realizadas", analysis.outbound_calls),
         ("Atendidas", analysis.answered_calls),
-        ("Nao atendidas", analysis.unanswered_calls),
-        ("Busy Hour", analysis.busy_hour_label),
-        ("Chamadas na Busy Hour", analysis.busy_hour_calls),
-        ("Trafego Busy Hour Erlangs", analysis.busy_hour_erlangs),
+        ("Não atendidas", analysis.unanswered_calls),
+        ("Hora de maior movimento", analysis.busy_hour_label),
+        ("Chamadas na hora de pico", analysis.busy_hour_calls),
+        ("Tráfego na hora de pico em Erlangs", analysis.busy_hour_erlangs),
         ("Bloqueio atual Erlang B", f"{payload['erlang_blocking_percent']}%"),
-        ("Pico simultaneo", analysis.peak_concurrent_calls),
+        ("Pico simultâneo", analysis.peak_concurrent_calls),
         ("4 linhas ocupadas", analysis.all_lines_busy_count),
         ("Tempo com 4 ocupadas", payload["all_lines_busy_duration"]),
-        ("Maior periodo 4 ocupadas", payload["longest_all_lines_busy_duration"]),
-        ("Conclusao", analysis.recommendation.status),
-        ("Recomendacao", analysis.recommendation.message),
+        ("Maior intervalo 4 ocupadas", payload["longest_all_lines_busy_duration"]),
+        ("Conclusão", analysis.recommendation.status),
+        ("Recomendação", analysis.recommendation.message),
     ]
     for row_index, (label, value) in enumerate(rows, start=3):
         sheet.cell(row_index, 1, label)
         sheet.cell(row_index, 2, value)
 
     row = len(rows) + 5
-    sheet.cell(row, 1, "Bloqueio maximo")
+    sheet.cell(row, 1, "Bloqueio máximo")
     sheet.cell(row, 2, "Linhas recomendadas")
     style_header(sheet, row)
     for offset, (target, lines) in enumerate(analysis.erlang_recommended_lines.items(), start=1):

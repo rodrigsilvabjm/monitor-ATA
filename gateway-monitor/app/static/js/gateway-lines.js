@@ -393,7 +393,7 @@ async function loadEvents() {
       </tr>
     `).join("");
   } catch {
-    table.innerHTML = '<tr><td colspan="4" class="text-secondary">Historico indisponivel</td></tr>';
+    table.innerHTML = '<tr><td colspan="4" class="text-secondary">Histórico indisponível</td></tr>';
   }
 }
 

@@ -27,7 +27,7 @@ function renderCapacity(data) {
   document.getElementById("cap-erlangs").textContent = data.busy_hour_erlangs;
   document.getElementById("cap-peak").textContent = data.peak_concurrent_calls;
   document.getElementById("cap-answered").textContent = data.answered_calls;
-  document.getElementById("cap-unanswered").textContent = `${data.unanswered_calls} nao atendidas`;
+  document.getElementById("cap-unanswered").textContent = `${data.unanswered_calls} não atendidas`;
   document.getElementById("cap-average-duration").textContent = data.average_duration;
   document.getElementById("cap-total-duration").textContent = `${data.total_duration} total`;
   document.getElementById("cap-occupancy").textContent = `${data.average_occupancy_percent}%`;
@@ -60,7 +60,7 @@ function renderCapacity(data) {
 function renderRows(tableId, rows, mapper) {
   const table = document.getElementById(tableId);
   if (!rows.length) {
-    table.innerHTML = '<tr><td colspan="6" class="text-secondary">Sem dados no periodo</td></tr>';
+    table.innerHTML = '<tr><td colspan="6" class="text-secondary">Sem dados no período</td></tr>';
     return;
   }
 
@@ -74,7 +74,7 @@ function renderErlang(data) {
   const recommendationRows = Object.entries(data.erlang_recommended_lines)
     .map(([target, lines]) => `
       <tr>
-        <td>Bloqueio maximo ${target}</td>
+        <td>Bloqueio máximo ${target}</td>
         <td><strong>${lines} linhas</strong></td>
       </tr>
     `)
@@ -171,7 +171,7 @@ function drawEmpty(ctx, width, height) {
   ctx.fillStyle = "#6c757d";
   ctx.font = "14px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("Sem dados no periodo", width / 2, height / 2);
+  ctx.fillText("Sem dados no período", width / 2, height / 2);
   ctx.textAlign = "start";
 }
 
