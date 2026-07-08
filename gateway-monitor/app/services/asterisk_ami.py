@@ -38,16 +38,31 @@ class AsteriskAmiMonitor:
     def active_fxo_lines(self, monitored_lines: list[int]) -> set[int]:
         monitored = set(monitored_lines)
         monitored_as_text = {str(line_number) for line_number in monitored_lines}
+
+        if self._core_poll_active and self._core_poll_seen_channels:
+            current_poll_lines = {
+                int(fxo_line)
+                for channel in self._core_poll_seen_channels
+                if (
+                    fxo_line := extract_fxo_line(channel, self._fxo_sip_mapping)
+                )
+                and fxo_line in monitored_as_text
+            }
+            return current_poll_lines.intersection(monitored)
+
+        if self._active_fxo_channels:
+            channel_lines = {
+                line_number
+                for line_number in self._active_fxo_channels.values()
+                if str(line_number) in monitored_as_text
+            }
+            return channel_lines.intersection(monitored)
+
         active_lines = {
             int(call.fxo_line)
             for call in self._snapshot.active_calls
             if call.fxo_line and call.fxo_line in monitored_as_text
         }
-        active_lines.update(
-            line_number
-            for line_number in self._active_fxo_channels.values()
-            if str(line_number) in monitored_as_text
-        )
         return active_lines.intersection(monitored)
 
     def start(self) -> None:
@@ -263,6 +278,7 @@ class AsteriskAmiMonitor:
         if not self._core_poll_seen_ids:
             self._active_calls = {}
             self._active_fxo_channels = {}
+            self._active_fxo_channel_call_keys = {}
             return
 
         self._active_calls = {

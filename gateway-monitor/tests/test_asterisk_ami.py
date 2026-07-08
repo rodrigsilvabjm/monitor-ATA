@@ -309,6 +309,40 @@ def test_ami_monitor_counts_multiple_fxo_channels_with_same_linkedid() -> None:
     assert monitor.active_fxo_lines([1, 2, 3, 4]) == {1, 2}
 
 
+def test_ami_monitor_uses_current_core_poll_channels_for_occupancy() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        for unique_id, sip_peer in (("old-1", "3034"), ("old-2", "3035")):
+            await monitor.process_event(
+                {
+                    "Event": "CoreShowChannel",
+                    "Uniqueid": unique_id,
+                    "Channel": f"SIP/{sip_peer}-00000001",
+                }
+            )
+
+        monitor._core_poll_active = True
+        monitor._core_poll_seen_ids = set()
+        monitor._core_poll_seen_channels = set()
+        await monitor.process_event(
+            {
+                "Event": "CoreShowChannel",
+                "Uniqueid": "current-2",
+                "Channel": "SIP/3035-00001c54",
+                "Location": "2@from-fxo-gw:2",
+                "Application": "Queue",
+            }
+        )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {2}
+
+
 def test_ami_monitor_ignores_internal_channels_for_line_occupancy() -> None:
     async def scenario() -> AsteriskAmiMonitor:
         settings = get_settings().model_copy(
