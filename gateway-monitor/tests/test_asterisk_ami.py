@@ -283,6 +283,57 @@ def test_ami_monitor_merges_call_legs_by_linkedid() -> None:
     assert monitor.active_fxo_lines([1, 2, 3, 4]) == {4}
 
 
+def test_ami_monitor_counts_multiple_fxo_channels_with_same_linkedid() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        for unique_id, sip_peer in (("leg-1", "3034"), ("leg-2", "3035")):
+            await monitor.process_event(
+                {
+                    "Event": "CoreShowChannel",
+                    "Uniqueid": unique_id,
+                    "Linkedid": "same-linked-call",
+                    "Channel": f"SIP/{sip_peer}-00000abc",
+                    "Location": "s@from-fxo-gw:12",
+                    "Application": "Queue",
+                }
+            )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert len(monitor.snapshot.active_calls) == 1
+    assert monitor.active_fxo_line_count([1, 2, 3, 4]) == 2
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == {1, 2}
+
+
+def test_ami_monitor_ignores_internal_channels_for_line_occupancy() -> None:
+    async def scenario() -> AsteriskAmiMonitor:
+        settings = get_settings().model_copy(
+            update={"asterisk_fxo_sip_map": "3034:1,3035:2,3036:3,3037:4"}
+        )
+        monitor = AsteriskAmiMonitor(settings)
+        for unique_id, sip_peer in (("leg-1", "2037"), ("leg-2", "2012")):
+            await monitor.process_event(
+                {
+                    "Event": "CoreShowChannel",
+                    "Uniqueid": unique_id,
+                    "Linkedid": "internal-ring-group",
+                    "Channel": f"SIP/{sip_peer}-00000abc",
+                    "Location": "3@interno:1",
+                    "Application": "AppQueue",
+                }
+            )
+        return monitor
+
+    monitor = asyncio.run(scenario())
+
+    assert monitor.active_fxo_line_count([1, 2, 3, 4]) == 0
+    assert monitor.active_fxo_lines([1, 2, 3, 4]) == set()
+
+
 def test_ami_monitor_keeps_all_four_linked_fxo_lines() -> None:
     async def scenario() -> AsteriskAmiMonitor:
         settings = get_settings().model_copy(

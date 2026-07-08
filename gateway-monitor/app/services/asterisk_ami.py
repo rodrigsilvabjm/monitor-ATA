@@ -17,7 +17,10 @@ class AsteriskAmiMonitor:
         self._settings = settings
         self._fxo_sip_mapping = settings.asterisk_fxo_sip_mapping
         self._active_calls: dict[str, ActiveCall] = {}
+        self._active_fxo_channels: dict[str, int] = {}
+        self._active_fxo_channel_call_keys: dict[str, str] = {}
         self._core_poll_seen_ids: set[str] = set()
+        self._core_poll_seen_channels: set[str] = set()
         self._core_poll_active = False
         self._completed_durations: list[int] = []
         self._missed_calls = 0
@@ -40,6 +43,11 @@ class AsteriskAmiMonitor:
             for call in self._snapshot.active_calls
             if call.fxo_line and call.fxo_line in monitored_as_text
         }
+        active_lines.update(
+            line_number
+            for line_number in self._active_fxo_channels.values()
+            if str(line_number) in monitored_as_text
+        )
         return active_lines.intersection(monitored)
 
     def start(self) -> None:
@@ -68,6 +76,7 @@ class AsteriskAmiMonitor:
     async def _run_forever(self) -> None:
         while True:
             if not self._settings.asterisk_ami_enabled:
+                self._clear_live_state()
                 self._snapshot = self._build_snapshot(connected=False)
                 await self._broadcast()
                 await asyncio.sleep(self._settings.asterisk_ami_reconnect_delay)
@@ -79,11 +88,13 @@ class AsteriskAmiMonitor:
                 raise
             except (TimeoutError, ConnectionError, OSError) as exc:
                 logger.warning("Asterisk AMI unavailable: %s", exc)
+                self._clear_live_state()
                 self._snapshot = self._build_snapshot(connected=False)
                 await self._broadcast()
                 await asyncio.sleep(self._settings.asterisk_ami_reconnect_delay)
             except Exception:
                 logger.exception("Asterisk AMI connection failed")
+                self._clear_live_state()
                 self._snapshot = self._build_snapshot(connected=False)
                 await self._broadcast()
                 await asyncio.sleep(self._settings.asterisk_ami_reconnect_delay)
@@ -142,6 +153,7 @@ class AsteriskAmiMonitor:
         while True:
             self._core_poll_active = True
             self._core_poll_seen_ids = set()
+            self._core_poll_seen_channels = set()
             writer.write(
                 b"Action: CoreShowChannels\r\n"
                 b"ActionID: gateway-monitor-core-show\r\n\r\n"
@@ -153,16 +165,22 @@ class AsteriskAmiMonitor:
         event_name = event.get("Event", "").lower()
 
         if event_name in {"newchannel", "dialbegin"}:
+            self._track_active_fxo_channels(event)
             self._upsert_call(event)
         elif event_name in {"bridgeenter", "dialend"}:
+            self._track_active_fxo_channels(event)
             self._mark_answered(event)
         elif event_name in {"hangup", "cdr"}:
+            self._remove_fxo_channels_from_event(event)
             self._finish_call(event)
         elif event_name == "coreshowchannel":
+            self._track_active_fxo_channels(event)
             self._upsert_call(event)
             call_key = get_call_key(event)
             if call_key:
                 self._core_poll_seen_ids.add(call_key)
+            for channel in get_event_channels(event):
+                self._core_poll_seen_channels.add(channel)
         elif event_name == "coreshowchannelscomplete":
             if self._core_poll_active:
                 self._remove_calls_missing_from_core_poll()
@@ -172,6 +190,26 @@ class AsteriskAmiMonitor:
 
         self._snapshot = self._build_snapshot(connected=True)
         await self._broadcast()
+
+    def _track_active_fxo_channels(self, event: dict[str, str]) -> None:
+        mapped_field_line = extract_mapped_fxo_line_from_event_fields(
+            event,
+            self._fxo_sip_mapping,
+        )
+        call_key = get_call_key(event)
+        for channel in get_event_channels(event):
+            fxo_line = extract_fxo_line(channel, self._fxo_sip_mapping)
+            if fxo_line and fxo_line.isdigit():
+                if mapped_field_line and mapped_field_line != fxo_line:
+                    continue
+                self._active_fxo_channels[channel] = int(fxo_line)
+                if call_key:
+                    self._active_fxo_channel_call_keys[channel] = call_key
+
+    def _remove_fxo_channels_from_event(self, event: dict[str, str]) -> None:
+        for channel in get_event_channels(event):
+            self._active_fxo_channels.pop(channel, None)
+            self._active_fxo_channel_call_keys.pop(channel, None)
 
     def _upsert_call(self, event: dict[str, str]) -> None:
         call_key = get_call_key(event)
@@ -206,6 +244,10 @@ class AsteriskAmiMonitor:
             call.answered_extension,
             extract_internal_extension_from_event(event, self._fxo_sip_mapping),
         )
+        mapped_field_line = extract_mapped_fxo_line_from_event_fields(
+            event,
+            self._fxo_sip_mapping,
+        )
         call.fxo_line = first_present(
             extract_fxo_line_from_event(
                 event,
@@ -214,17 +256,29 @@ class AsteriskAmiMonitor:
             ),
             call.fxo_line,
         )
+        self._remove_corrected_fxo_channels(call_key, mapped_field_line)
         self._active_calls[call_key] = call
 
     def _remove_calls_missing_from_core_poll(self) -> None:
         if not self._core_poll_seen_ids:
             self._active_calls = {}
+            self._active_fxo_channels = {}
             return
 
         self._active_calls = {
             unique_id: call
             for unique_id, call in self._active_calls.items()
             if unique_id in self._core_poll_seen_ids
+        }
+        self._active_fxo_channels = {
+            channel: line
+            for channel, line in self._active_fxo_channels.items()
+            if channel in self._core_poll_seen_channels
+        }
+        self._active_fxo_channel_call_keys = {
+            channel: call_key
+            for channel, call_key in self._active_fxo_channel_call_keys.items()
+            if channel in self._active_fxo_channels
         }
 
     def _mark_answered(self, event: dict[str, str]) -> None:
@@ -245,6 +299,10 @@ class AsteriskAmiMonitor:
             event.get("Exten"),
             extract_internal_extension_from_event(event, self._fxo_sip_mapping),
         )
+        mapped_field_line = extract_mapped_fxo_line_from_event_fields(
+            event,
+            self._fxo_sip_mapping,
+        )
         call.fxo_line = first_present(
             extract_fxo_line_from_event(
                 event,
@@ -253,6 +311,7 @@ class AsteriskAmiMonitor:
             ),
             call.fxo_line,
         )
+        self._remove_corrected_fxo_channels(call_key, mapped_field_line)
         self._active_calls[call_key] = call
 
     def _finish_call(self, event: dict[str, str]) -> None:
@@ -288,6 +347,35 @@ class AsteriskAmiMonitor:
             if call:
                 return call
         return None
+
+    def _clear_live_state(self) -> None:
+        self._active_calls = {}
+        self._active_fxo_channels = {}
+        self._active_fxo_channel_call_keys = {}
+        self._core_poll_seen_ids = set()
+        self._core_poll_seen_channels = set()
+        self._core_poll_active = False
+
+    def _remove_corrected_fxo_channels(
+        self,
+        call_key: str,
+        mapped_field_line: str | None,
+    ) -> None:
+        expected_line = (
+            int(mapped_field_line)
+            if mapped_field_line and mapped_field_line.isdigit()
+            else None
+        )
+        if expected_line is None:
+            return
+
+        for channel, channel_call_key in list(self._active_fxo_channel_call_keys.items()):
+            if channel_call_key != call_key:
+                continue
+            if self._active_fxo_channels.get(channel) == expected_line:
+                continue
+            self._active_fxo_channels.pop(channel, None)
+            self._active_fxo_channel_call_keys.pop(channel, None)
 
     def _build_snapshot(self, connected: bool) -> AsteriskSnapshot:
         now = datetime.now(UTC)
@@ -379,6 +467,15 @@ def get_possible_call_keys(event: dict[str, str], primary_key: str) -> list[str]
     return unique_keys
 
 
+def get_event_channels(event: dict[str, str]) -> list[str]:
+    channels: list[str] = []
+    for key in ("Channel", "DestChannel"):
+        channel = event.get(key)
+        if channel and channel not in channels:
+            channels.append(channel)
+    return channels
+
+
 def first_present(*values: str | None) -> str | None:
     for value in values:
         if value:
@@ -409,6 +506,25 @@ def extract_fxo_line_from_event(
 ) -> str | None:
     mapping = sip_mapping or {}
 
+    mapped_field_line = extract_mapped_fxo_line_from_event_fields(event, mapping)
+    if mapped_field_line:
+        return mapped_field_line
+
+    if current_fxo_line:
+        return current_fxo_line
+
+    return first_present(
+        extract_fxo_line(event.get("Channel"), mapping),
+        extract_fxo_line(event.get("DestChannel"), mapping),
+    )
+
+
+def extract_mapped_fxo_line_from_event_fields(
+    event: dict[str, str],
+    sip_mapping: dict[str, str] | None = None,
+) -> str | None:
+    mapping = sip_mapping or {}
+
     for key in (
         "Exten",
         "DestExten",
@@ -420,14 +536,7 @@ def extract_fxo_line_from_event(
         value = event.get(key)
         if value in mapping:
             return mapping[value]
-
-    if current_fxo_line:
-        return current_fxo_line
-
-    return first_present(
-        extract_fxo_line(event.get("Channel"), mapping),
-        extract_fxo_line(event.get("DestChannel"), mapping),
-    )
+    return None
 
 
 def extract_internal_extension_from_event(
